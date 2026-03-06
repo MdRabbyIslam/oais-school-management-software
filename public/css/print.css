@@ -1,0 +1,162 @@
+@media print{
+    *{
+        background: transparent;
+        color: #000!important;
+        box-shadow: none!important;
+        text-shadow: none!important;
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+
+    .page-break {
+        page-break-before: auto;
+        page-break-after: auto;
+        break-inside: avoid; /* or avoid-page */
+    }
+
+    body {
+        font: 12pt Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, SolaimanLipi, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        line-height: 1.5;
+        background: transparent;
+        }
+
+    ul li{
+        list-style: none;
+    }
+
+    .clearfix::after {
+        content: "";
+        clear: both;
+        display: table;
+      }
+
+    @page :left {
+        margin: 0.5cm;
+        }
+
+    @page :right {
+        margin: 0.6cm;
+    }
+
+    /* page header  */
+
+
+    .print_invoice, .print_header{
+        width: 100%;
+
+    }
+
+    .print_invoice{
+        page-break-inside: avoid;
+    }
+    .print_invoice .invoice_name{
+        border: 1px solid black;
+        font-size: 16px;
+        padding: 10px 30px;
+    }
+
+    .print_header .print_company_details h1.mill-name{
+        font-size: 28px;
+    }
+
+    .print_header .print_company_details ul{
+        margin-top: 24px;
+    }
+    .print_header .print_company_details ul li{
+        font-size: 16px;
+    }
+
+    .print_header .print_invoice_details{
+        margin-top: 24x;
+    }
+
+    .print_invoice_details .customer,.print_invoice_details .sender,.print_invoice_details .driver{
+        float: left;
+        width: 33.3%;
+    }
+    .print_invoice_details .sender,.print_invoice_details .driver{
+        margin-left: auto;
+    }
+
+    .print_invoice_details .sender div{
+        display: inline-block;
+        margin-left: 150px;
+
+    }
+    .print_invoice_details .driver{
+        text-align: right;
+    }
+
+    .print_invoice_details span{
+        font-size: 24px;
+    }
+    .print_invoice_details ul li , .print_invoice_details ul li h5{
+        font-size: 26px;
+    }
+
+    .print_body table{
+        border-collapse: collapse;
+        width: 100%;
+    }
+    .print_body table td, .print_body table th {
+        border: 1px solid black;
+
+        padding: 4px;
+        text-align:center;
+      }
+      .print_body table td{
+          font-size: 16px;
+          border: 1px solid black;
+      }
+
+      .print_body table thead tr th{
+          border: 1px solid black;
+          border-top: 1px solid black;
+          border-bottom: 1px solid black;
+          font-size: 16px;
+          text-align: center;
+          background: black;
+          /* color: white!important; */
+          color: black;
+      }
+
+      .print_body table thead tr th:last-child{
+        border-right: 1px solid black;
+      }
+
+      .print_body table thead tr th:first-child{
+        border-left: 1px solid black;
+      }
+
+
+
+    .print_body table tbody tr:nth-child(even){background-color: #f2f2f2;}
+
+    .invoice_serial{
+        font-size: 18px;
+    }
+
+    .invoice_name_container{
+        /* border: 1px solid red; */
+    }
+
+
+    
+    /* .invoice_thead tr th{
+        color: black;
+        font-weight: bold;
+    } */
+
+    .print_body table th {
+        background: #eee;
+    }
+
+    .print_body table td.balance {
+        background: #eee;
+    }
+
+
+
+}

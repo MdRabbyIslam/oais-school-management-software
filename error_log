@@ -1,0 +1,2 @@
+[19-Nov-2025 09:12:08 UTC] PHP Fatal error:  Allowed memory size of 134217728 bytes exhausted (tried to allocate 5087232 bytes) in /home/mdrabbyi/live.oasis.mdrabbyislam.com/vendor/laravel/framework/src/Illuminate/Database/Query/Grammars/MySqlGrammar.php on line 449
+[19-Nov-2025 23:31:05 UTC] PHP Fatal error:  Cannot redeclare App\Console\Commands\GenerateInvoicesNew::generateInvoiceNumber() in /home/mdrabbyi/live.oasis.mdrabbyislam.com/app/Console/Commands/GenerateInvoicesNew.php on line 383
