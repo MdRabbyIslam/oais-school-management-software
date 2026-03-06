@@ -43,6 +43,10 @@ class DatabaseSeeder extends Seeder
         $this->call(UpcomingAcademicYearSeeder::class);
         $this->call(EnsureActiveEnrollmentsSeeder::class);
 
+        // Exam result system baseline grading setup
+        $this->call(GradeSchemeSeeder::class);
+        $this->call(GradingPolicySeeder::class);
+
 
     }
 }
