@@ -20,9 +20,10 @@ class GradingPolicySeeder extends Seeder
     {
         $class3Above100 = GradeScheme::where('name', '100-Mark Class 3+ (A+ 80-100)')->first();
         $nurseryToClass2_100 = GradeScheme::where('name', '100-Mark Nursery-Class 2 (A+ 90-100)')->first();
-        $nurseryToClass2_50 = GradeScheme::where('name', '50-Mark Nursery-Class 2 (A+ 45-50)')->first();
+        // $nurseryToClass2_50 = GradeScheme::where('name', '50-Mark Nursery-Class 2 (A+ 45-50)')->first();
 
-        if (!$class3Above100 || !$nurseryToClass2_100 || !$nurseryToClass2_50) {
+        // if (!$class3Above100 || !$nurseryToClass2_100 || !$nurseryToClass2_50) {
+        if (!$class3Above100 || !$nurseryToClass2_100 ) {
             return;
         }
 
@@ -32,7 +33,7 @@ class GradingPolicySeeder extends Seeder
             ->get();
 
         foreach ($pairs as $pair) {
-            $isLowerClass = ((int) $pair->class_level <= 2);
+            $isLowerClass = ((int) $pair->class_level <= 4);
             $schemeFor100 = $isLowerClass ? $nurseryToClass2_100 : $class3Above100;
 
             GradingPolicy::updateOrCreate(
@@ -48,25 +49,25 @@ class GradingPolicySeeder extends Seeder
                 ]
             );
 
-            if ($isLowerClass) {
-                GradingPolicy::updateOrCreate(
-                    [
-                        'class_id' => $pair->class_id,
-                        'subject_id' => $pair->subject_id,
-                        'total_marks' => 50.00,
-                    ],
-                    [
-                        'pass_marks' => 20.00,
-                        'grade_scheme_id' => $nurseryToClass2_50->id,
-                        'is_active' => true,
-                    ]
-                );
-            } else {
-                GradingPolicy::where('class_id', $pair->class_id)
-                    ->where('subject_id', $pair->subject_id)
-                    ->where('total_marks', 50.00)
-                    ->delete();
-            }
+            // if ($isLowerClass) {
+            //     GradingPolicy::updateOrCreate(
+            //         [
+            //             'class_id' => $pair->class_id,
+            //             'subject_id' => $pair->subject_id,
+            //             'total_marks' => 50.00,
+            //         ],
+            //         [
+            //             'pass_marks' => 20.00,
+            //             'grade_scheme_id' => $nurseryToClass2_50->id,
+            //             'is_active' => true,
+            //         ]
+            //     );
+            // } else {
+            //     GradingPolicy::where('class_id', $pair->class_id)
+            //         ->where('subject_id', $pair->subject_id)
+            //         ->where('total_marks', 50.00)
+            //         ->delete();
+            // }
         }
     }
 }

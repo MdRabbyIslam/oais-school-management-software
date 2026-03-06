@@ -335,6 +335,24 @@ return [
             'url'  => 'terms',
             'icon' => 'fas fa-clipboard-list',
         ],
+        [
+            'text' => 'Exam Assessments',
+            'url'  => 'exam-assessments',
+            'icon' => 'fas fa-file-alt',
+            'can'  => 'manage-exams',
+        ],
+        [
+            'text' => 'Grade Schemes',
+            'url'  => 'grade-schemes',
+            'icon' => 'fas fa-list-ol',
+            'can'  => 'manage-exams',
+        ],
+        [
+            'text' => 'Grading Policies',
+            'url'  => 'grading-policies',
+            'icon' => 'fas fa-balance-scale',
+            'can'  => 'manage-exams',
+        ],
 
         // Phase 2 Items
         [

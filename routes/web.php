@@ -3,6 +3,10 @@
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\ExamAssessmentController;
+use App\Http\Controllers\ExamAssessmentSetupController;
+use App\Http\Controllers\ExamMarkEntryController;
+use App\Http\Controllers\GradeSchemeController;
 use App\Http\Controllers\FeeAssignmentController;
 use App\Http\Controllers\FeeController;
 use App\Http\Controllers\FeeGeneratorController;
@@ -18,6 +22,7 @@ use App\Http\Controllers\SmsController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\SubjectAssignmentController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\GradingPolicyController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\StudentEnrollmentController;
@@ -314,6 +319,19 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:superadmin,admin'])->group(function () {
         Route::resource('academic_years', AcademicYearController::class);
         Route::resource('terms', TermController::class);
+        Route::resource('exam-assessments', ExamAssessmentController::class);
+        Route::resource('grade-schemes', GradeSchemeController::class);
+        Route::resource('grading-policies', GradingPolicyController::class);
+        Route::get('exam-assessment-classes/{examAssessmentClass}/setup', [ExamAssessmentSetupController::class, 'edit'])
+            ->name('exam-assessment-classes.setup.edit');
+        Route::post('exam-assessment-classes/{examAssessmentClass}/setup/subjects', [ExamAssessmentSetupController::class, 'storeSubject'])
+            ->name('exam-assessment-classes.setup.store-subject');
+        Route::delete('exam-assessment-subjects/{examAssessmentSubject}', [ExamAssessmentSetupController::class, 'destroySubject'])
+            ->name('exam-assessment-subjects.destroy');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/marks', [ExamMarkEntryController::class, 'create'])
+            ->name('exam-assessment-classes.marks.create');
+        Route::post('exam-assessment-classes/{examAssessmentClass}/marks', [ExamMarkEntryController::class, 'store'])
+            ->name('exam-assessment-classes.marks.store');
     });
     // Only allow access based on roles
     Route::middleware(['role:superadmin,admin'])->group(function () {
