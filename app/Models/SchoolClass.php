@@ -22,4 +22,14 @@ class SchoolClass extends Model
     {
         return $this->hasMany(SubjectAssignment::class, 'section_id', 'id');
     }
+
+    public function gradingPolicies()
+    {
+        return $this->hasMany(GradingPolicy::class, 'class_id');
+    }
+
+    public function examAssessmentClasses()
+    {
+        return $this->hasMany(ExamAssessmentClass::class, 'class_id');
+    }
 }

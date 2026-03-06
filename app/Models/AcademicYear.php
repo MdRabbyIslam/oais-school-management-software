@@ -68,4 +68,12 @@ class AcademicYear extends Model
     {
         return $this->hasMany(StudentPromotion::class, 'target_academic_year_id');
     }
+
+    /**
+     * Get exam assessments for the academic year.
+     */
+    public function examAssessments()
+    {
+        return $this->hasMany(ExamAssessment::class);
+    }
 }

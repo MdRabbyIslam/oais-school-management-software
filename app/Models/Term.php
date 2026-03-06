@@ -54,4 +54,12 @@ class Term extends Model
             ->orderBy('end_date', 'desc');
     }
 
+    /**
+     * Get exam assessments for the term.
+     */
+    public function examAssessments()
+    {
+        return $this->hasMany(ExamAssessment::class);
+    }
+
 }

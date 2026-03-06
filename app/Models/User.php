@@ -54,4 +54,29 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class);
     }
+
+    public function createdExamAssessments()
+    {
+        return $this->hasMany(ExamAssessment::class, 'created_by');
+    }
+
+    public function publishedExamAssessments()
+    {
+        return $this->hasMany(ExamAssessment::class, 'published_by');
+    }
+
+    public function publishedExamAssessmentClasses()
+    {
+        return $this->hasMany(ExamAssessmentClass::class, 'published_by');
+    }
+
+    public function enteredExamMarks()
+    {
+        return $this->hasMany(ExamMark::class, 'entered_by');
+    }
+
+    public function verifiedExamMarks()
+    {
+        return $this->hasMany(ExamMark::class, 'verified_by');
+    }
 }

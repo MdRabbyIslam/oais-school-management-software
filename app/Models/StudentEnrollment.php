@@ -56,4 +56,14 @@ class StudentEnrollment extends Model
     {
         return $this->hasMany(StudentPromotion::class, 'to_enrollment_id');
     }
+
+    public function examMarks()
+    {
+        return $this->hasMany(ExamMark::class);
+    }
+
+    public function examStudentResults()
+    {
+        return $this->hasMany(ExamStudentResult::class);
+    }
 }

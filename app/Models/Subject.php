@@ -25,5 +25,13 @@ class Subject extends Model
         return $this->hasMany(SubjectAssignment::class);
     }
 
+    public function gradingPolicies()
+    {
+        return $this->hasMany(GradingPolicy::class);
+    }
 
+    public function examAssessmentSubjects()
+    {
+        return $this->hasMany(ExamAssessmentSubject::class);
+    }
 }
