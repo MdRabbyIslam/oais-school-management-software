@@ -20,7 +20,7 @@
                     <select name="class_id" id="class_id" class="form-control" required>
                         <option value="">Select Class</option>
                         @foreach($classes as $class)
-                            <option value="{{ $class->id }}" {{ (string) old('class_id') === (string) $class->id ? 'selected' : '' }}>
+                            <option value="{{ $class->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $class->id ? 'selected' : '' }}>
                                 {{ $class->name }}
                             </option>
                         @endforeach
@@ -35,7 +35,7 @@
                             <option
                                 value="{{ $subject->id }}"
                                 data-class-ids="{{ $subject->classes->pluck('id')->implode(',') }}"
-                                {{ (string) old('subject_id') === (string) $subject->id ? 'selected' : '' }}
+                                {{ (string) old('subject_id', $prefillSubjectId ?? '') === (string) $subject->id ? 'selected' : '' }}
                             >
                                 {{ $subject->name }}
                             </option>
@@ -88,7 +88,7 @@
         const subjectSelect = document.getElementById('subject_id');
         const gradeSchemeSelect = document.getElementById('grade_scheme_id');
         const subjectOptions = Array.from(subjectSelect.querySelectorAll('option[value]'));
-        const oldSubject = "{{ old('subject_id', '') }}";
+        const oldSubject = "{{ old('subject_id', $prefillSubjectId ?? '') }}";
 
         function resetSelect(select) {
             select.value = '';

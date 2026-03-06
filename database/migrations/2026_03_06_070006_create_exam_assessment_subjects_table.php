@@ -19,6 +19,8 @@ return new class extends Migration
             $table->decimal('total_marks', 6, 2);
             $table->decimal('pass_marks', 6, 2);
             $table->boolean('is_optional')->default(false);
+            // Relative contribution of this subject in final result calculation.
+            // Example: 1.00 = full weight, 0.50 = half weight.
             $table->decimal('weight', 5, 2)->default(1.00);
             $table->timestamps();
 
@@ -34,4 +36,3 @@ return new class extends Migration
         Schema::dropIfExists('exam_assessment_subjects');
     }
 };
-

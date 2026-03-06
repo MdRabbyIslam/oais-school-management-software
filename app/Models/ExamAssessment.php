@@ -13,7 +13,6 @@ class ExamAssessment extends Model
         'academic_year_id',
         'term_id',
         'name',
-        'assessment_type',
         'start_date',
         'end_date',
         'status',
@@ -53,4 +52,3 @@ class ExamAssessment extends Model
         return $this->hasMany(ExamAssessmentClass::class);
     }
 }
-

@@ -5,6 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * ExamAssessmentSubject stores per-subject setup for a class-wise assessment.
+ *
+ * Note on "weight":
+ * - Defines how much this subject contributes in final aggregate calculation.
+ * - 1.00 means full contribution, 0.50 means half contribution.
+ * - Kept as future-ready metadata until calculation service applies weighted logic.
+ */
 class ExamAssessmentSubject extends Model
 {
     use HasFactory;
@@ -23,6 +31,7 @@ class ExamAssessmentSubject extends Model
         'total_marks' => 'decimal:2',
         'pass_marks' => 'decimal:2',
         'is_optional' => 'boolean',
+        // Stored as decimal to support fractional weighting (e.g., 0.50).
         'weight' => 'decimal:2',
     ];
 
@@ -51,4 +60,3 @@ class ExamAssessmentSubject extends Model
         return $this->hasMany(ExamMark::class, 'assessment_subject_id');
     }
 }
-

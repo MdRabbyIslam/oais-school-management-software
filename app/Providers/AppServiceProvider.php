@@ -55,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Promotions: restrict management to superadmin only
         Gate::define('manage-promotions', fn (User $user) => strtolower($user->role->name) === 'superadmin');
+        Gate::define('manage-exams', fn (User $user) => in_array(strtolower(optional($user->role)->name ?? ''), ['admin', 'superadmin']));
 
 
     }

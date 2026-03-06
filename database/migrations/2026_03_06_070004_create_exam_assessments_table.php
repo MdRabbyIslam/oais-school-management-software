@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('academic_year_id')->constrained('academic_years')->onDelete('cascade');
             $table->foreignId('term_id')->nullable()->constrained('terms')->nullOnDelete();
             $table->string('name');
-            $table->string('assessment_type', 30)->default('term_main');
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->string('status', 20)->default('draft');
@@ -25,7 +24,6 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
 
-            $table->index(['academic_year_id', 'assessment_type'], 'exam_assessments_year_type_idx');
             $table->index(['academic_year_id', 'term_id', 'status'], 'exam_assessments_year_term_status_idx');
             $table->index('status', 'exam_assessments_status_idx');
         });

@@ -37,7 +37,7 @@ class GradingPolicyController extends Controller
         return view('pages.grading_policies_index', compact('policies', 'classes', 'schemes'));
     }
 
-    public function create()
+    public function create(\Illuminate\Http\Request $request)
     {
         $this->authorize('manage-exams');
 
@@ -46,8 +46,10 @@ class GradingPolicyController extends Controller
             ->orderBy('name')
             ->get();
         $schemes = GradeScheme::where('is_active', true)->orderBy('name')->get();
+        $prefillClassId = $request->query('class_id');
+        $prefillSubjectId = $request->query('subject_id');
 
-        return view('pages.grading_policies_create', compact('classes', 'subjects', 'schemes'));
+        return view('pages.grading_policies_create', compact('classes', 'subjects', 'schemes', 'prefillClassId', 'prefillSubjectId'));
     }
 
     public function store(StoreGradingPolicyRequest $request)
