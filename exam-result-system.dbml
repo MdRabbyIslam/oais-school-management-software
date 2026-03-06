@@ -1,0 +1,376 @@
+Project oasis_exam_result_system {
+  database_type: "MySQL"
+  Note: "Core schema + exam result schema with class/subject/marks-specific grading and subject mark components (Written/MCQ/etc.)"
+}
+
+Enum assessment_type_enum {
+  term_main
+  weekly
+  class_test
+  other
+}
+
+Enum assessment_status_enum {
+  draft
+  published
+  locked
+}
+
+/* ---------------- Existing Core ---------------- */
+
+Table users {
+  id bigint [pk, increment]
+  name varchar
+  email varchar [unique]
+  password varchar
+  role_id bigint [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table academic_years {
+  id bigint [pk, increment]
+  name varchar(50) [unique]
+  start_date date
+  end_date date
+  is_current boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table terms {
+  id bigint [pk, increment]
+  academic_year_id bigint
+  name varchar(30)
+  order int
+  start_date date
+  end_date date
+  fee_due_date date [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table classes {
+  id bigint [pk, increment]
+  name varchar [unique]
+  class_level int
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table sections {
+  id bigint [pk, increment]
+  class_id bigint
+  section_name varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table subjects {
+  id bigint [pk, increment]
+  name varchar
+  code varchar [unique]
+  description text [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table class_subject {
+  id bigint [pk, increment]
+  class_id bigint
+  subject_id bigint
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (class_id, subject_id) [unique]
+  }
+}
+
+Table teachers {
+  id bigint [pk, increment]
+  teacher_id varchar [unique]
+  name varchar
+  qualification varchar
+  experience text [null]
+  contact_info varchar
+  base_salary decimal(10,2)
+  status varchar [default: "Active"]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table subject_assignments {
+  id bigint [pk, increment]
+  subject_id bigint
+  section_id bigint
+  teacher_id bigint
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (subject_id, section_id) [unique, name: "subject_section_unique"]
+  }
+}
+
+Table students {
+  id bigint [pk, increment]
+  student_id varchar [unique]
+  name varchar
+  dob date
+  primary_guardian_name varchar
+  primary_guardian_contact varchar(20)
+  primary_guardian_relation varchar
+  secondary_guardian_name varchar [null]
+  secondary_guardian_contact varchar(20) [null]
+  secondary_guardian_relation varchar [null]
+  address text [null]
+  admission_date date
+  blood_group varchar(5) [null]
+  roll_number int [null]
+  section_id bigint
+  birth_certificate_path varchar [null]
+  marksheet_path varchar [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table student_enrollments {
+  id bigint [pk, increment]
+  student_id bigint
+  academic_year_id bigint
+  class_id bigint
+  section_id bigint [null]
+  roll_number int [null]
+  enrollment_date date [null]
+  completion_date date [null]
+  status varchar [default: "active"]
+  meta json [null]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (student_id)
+    (academic_year_id)
+    (class_id)
+    (section_id)
+    (student_id, academic_year_id, status) [unique, name: "student_enrollments_student_id_academic_year_id_status_unique"]
+  }
+}
+
+/* ---------------- New Result System ---------------- */
+
+Table grade_schemes {
+  id bigint [pk, increment]
+  name varchar
+  description text [null]
+  is_active boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table grade_scheme_items {
+  id bigint [pk, increment]
+  grade_scheme_id bigint
+  letter_grade varchar(10)
+  gpa decimal(3,2)
+  min_mark decimal(6,2)
+  max_mark decimal(6,2)
+  sort_order int [default: 1]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (grade_scheme_id, letter_grade) [unique]
+  }
+}
+
+Table grading_policies {
+  id bigint [pk, increment]
+  class_id bigint
+  subject_id bigint
+  total_marks decimal(6,2)
+  pass_marks decimal(6,2)
+  grade_scheme_id bigint
+  is_active boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (class_id, subject_id, total_marks) [unique]
+  }
+}
+
+Table exam_assessments {
+  id bigint [pk, increment]
+  academic_year_id bigint
+  term_id bigint [null]
+  name varchar
+  assessment_type assessment_type_enum [default: "term_main"]
+  start_date date [null]
+  end_date date [null]
+  status assessment_status_enum [default: "draft"]
+  created_by bigint
+  published_by bigint [null]
+  published_at timestamp [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table exam_assessment_classes {
+  id bigint [pk, increment]
+  exam_assessment_id bigint
+  class_id bigint
+  is_published boolean [default: false]
+  published_by bigint [null]
+  published_at timestamp [null]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (exam_assessment_id, class_id) [unique]
+  }
+}
+
+Table exam_assessment_subjects {
+  id bigint [pk, increment]
+  assessment_class_id bigint
+  subject_id bigint
+  grading_policy_id bigint
+  total_marks decimal(6,2)
+  pass_marks decimal(6,2)
+  is_optional boolean [default: false]
+  weight decimal(5,2) [default: 1.00]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (assessment_class_id, subject_id) [unique]
+  }
+}
+
+Table exam_assessment_subject_components {
+  id bigint [pk, increment]
+  assessment_subject_id bigint
+  component_name varchar
+  component_code varchar(30)
+  total_marks decimal(6,2)
+  pass_marks decimal(6,2) [null]
+  sort_order int [default: 1]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (assessment_subject_id, component_code) [unique]
+  }
+}
+
+Table exam_marks {
+  id bigint [pk, increment]
+  assessment_subject_id bigint
+  student_enrollment_id bigint
+  marks_obtained decimal(6,2) [null]
+  is_absent boolean [default: false]
+  remarks varchar [null]
+  entered_by bigint [null]
+  verified_by bigint [null]
+  entered_at timestamp [null]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (assessment_subject_id, student_enrollment_id) [unique]
+  }
+}
+
+Table exam_mark_components {
+  id bigint [pk, increment]
+  exam_mark_id bigint
+  assessment_subject_component_id bigint
+  marks_obtained decimal(6,2) [null]
+  is_absent boolean [default: false]
+  remarks varchar [null]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (exam_mark_id, assessment_subject_component_id) [unique]
+  }
+}
+
+Table exam_student_results {
+  id bigint [pk, increment]
+  assessment_class_id bigint
+  student_enrollment_id bigint
+  total_obtained decimal(8,2)
+  total_marks decimal(8,2)
+  percentage decimal(5,2)
+  gpa decimal(3,2)
+  final_grade varchar(10)
+  failed_subject_count int [default: 0]
+  is_pass boolean
+  position int [null]
+  calculated_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (assessment_class_id, student_enrollment_id) [unique]
+  }
+}
+
+/* ---------------- Relationships ---------------- */
+
+Ref: terms.academic_year_id > academic_years.id
+
+Ref: sections.class_id > classes.id
+Ref: class_subject.class_id > classes.id
+Ref: class_subject.subject_id > subjects.id
+
+Ref: subject_assignments.subject_id > subjects.id
+Ref: subject_assignments.section_id > sections.id
+Ref: subject_assignments.teacher_id > teachers.id
+
+Ref: students.section_id > sections.id
+
+Ref: student_enrollments.student_id > students.id
+Ref: student_enrollments.academic_year_id > academic_years.id
+Ref: student_enrollments.class_id > classes.id
+Ref: student_enrollments.section_id > sections.id
+
+Ref: grade_scheme_items.grade_scheme_id > grade_schemes.id
+Ref: grading_policies.class_id > classes.id
+Ref: grading_policies.subject_id > subjects.id
+Ref: grading_policies.grade_scheme_id > grade_schemes.id
+
+Ref: exam_assessments.academic_year_id > academic_years.id
+Ref: exam_assessments.term_id > terms.id
+Ref: exam_assessments.created_by > users.id
+Ref: exam_assessments.published_by > users.id
+
+Ref: exam_assessment_classes.exam_assessment_id > exam_assessments.id
+Ref: exam_assessment_classes.class_id > classes.id
+Ref: exam_assessment_classes.published_by > users.id
+
+Ref: exam_assessment_subjects.assessment_class_id > exam_assessment_classes.id
+Ref: exam_assessment_subjects.subject_id > subjects.id
+Ref: exam_assessment_subjects.grading_policy_id > grading_policies.id
+
+Ref: exam_assessment_subject_components.assessment_subject_id > exam_assessment_subjects.id
+
+Ref: exam_marks.assessment_subject_id > exam_assessment_subjects.id
+Ref: exam_marks.student_enrollment_id > student_enrollments.id
+Ref: exam_marks.entered_by > users.id
+Ref: exam_marks.verified_by > users.id
+
+Ref: exam_mark_components.exam_mark_id > exam_marks.id
+Ref: exam_mark_components.assessment_subject_component_id > exam_assessment_subject_components.id
+
+Ref: exam_student_results.assessment_class_id > exam_assessment_classes.id
+Ref: exam_student_results.student_enrollment_id > student_enrollments.id
+
+/* Recommended app-level constraints:
+1) Sum(component.total_marks) == exam_assessment_subjects.total_marks
+2) Sum(component marks) should populate/validate exam_marks.marks_obtained
+3) If no components defined, allow direct subject-level marks in exam_marks
+*/
