@@ -23,6 +23,7 @@
             </div>
             <div class="col-md-7">
                 <a href="{{ route('exam-assessment-classes.marks.create', $examAssessmentClass) }}" class="btn btn-sm btn-primary">Marks For Current Class</a>
+                <a href="{{ route('exam-assessment-classes.results.index', $examAssessmentClass) }}" class="btn btn-sm btn-success">View Results</a>
                 <a href="{{ route('exam-assessments.index') }}" class="btn btn-sm btn-secondary">Back To Assessments</a>
             </div>
         </div>
@@ -210,6 +211,12 @@
                 </table>
             </div>
             <div class="card-footer">
+                <form method="POST" action="{{ route('exam-assessment-classes.results.publish', $examAssessmentClass) }}" class="d-inline"
+                    onsubmit="return confirm('Publish results for this class? This will recalculate and update result summaries.');">
+                    @csrf
+                    <button type="submit" class="btn btn-success btn-sm">Publish Results</button>
+                </form>
+                <a href="{{ route('exam-assessment-classes.results.index', $examAssessmentClass) }}" class="btn btn-outline-success btn-sm">View Results</a>
                 <a href="{{ route('exam-assessment-classes.marks.create', $examAssessmentClass) }}" class="btn btn-primary btn-sm">Go To Marks Entry</a>
             </div>
         </div>

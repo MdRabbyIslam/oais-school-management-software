@@ -80,11 +80,18 @@ class ExamMarkEntryController extends Controller
             (int) auth()->id()
         );
 
+        // Marks update changes final outcome, so published result must be recalculated.
+        $examAssessmentClass->update([
+            'is_published' => false,
+            'published_by' => null,
+            'published_at' => null,
+        ]);
+
         return redirect()
             ->route('exam-assessment-classes.marks.create', [
                 'examAssessmentClass' => $examAssessmentClass->id,
                 'assessment_subject_id' => $assessmentSubject->id,
             ])
-            ->with('success', 'Marks saved successfully.');
+            ->with('success', 'Marks saved successfully. Results are now unpublished; publish again after final review.');
     }
 }

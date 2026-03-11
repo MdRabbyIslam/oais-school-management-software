@@ -6,6 +6,7 @@ use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ExamAssessmentController;
 use App\Http\Controllers\ExamAssessmentSetupController;
 use App\Http\Controllers\ExamMarkEntryController;
+use App\Http\Controllers\ExamResultController;
 use App\Http\Controllers\GradeSchemeController;
 use App\Http\Controllers\FeeAssignmentController;
 use App\Http\Controllers\FeeController;
@@ -332,6 +333,16 @@ Route::middleware(['auth'])->group(function () {
             ->name('exam-assessment-classes.marks.create');
         Route::post('exam-assessment-classes/{examAssessmentClass}/marks', [ExamMarkEntryController::class, 'store'])
             ->name('exam-assessment-classes.marks.store');
+        Route::post('exam-assessment-classes/{examAssessmentClass}/publish-results', [ExamResultController::class, 'publish'])
+            ->name('exam-assessment-classes.results.publish');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/results', [ExamResultController::class, 'index'])
+            ->name('exam-assessment-classes.results.index');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/results/download-full-pdf', [ExamResultController::class, 'downloadClassPdf'])
+            ->name('exam-assessment-classes.results.download-class-pdf');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/results/{studentEnrollment}', [ExamResultController::class, 'show'])
+            ->name('exam-assessment-classes.results.show');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/results/{studentEnrollment}/download', [ExamResultController::class, 'download'])
+            ->name('exam-assessment-classes.results.download');
     });
     // Only allow access based on roles
     Route::middleware(['role:superadmin,admin'])->group(function () {

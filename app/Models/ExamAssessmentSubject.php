@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * Note on "weight":
  * - Defines how much this subject contributes in final aggregate calculation.
  * - 1.00 means full contribution, 0.50 means half contribution.
- * - Kept as future-ready metadata until calculation service applies weighted logic.
+ * - Used by ExamResultService during final result aggregation.
  */
 class ExamAssessmentSubject extends Model
 {

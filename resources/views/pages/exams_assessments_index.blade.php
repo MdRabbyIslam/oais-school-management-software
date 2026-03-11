@@ -30,7 +30,7 @@
                         <th>Term</th>
                         <th>Status</th>
                         <th>Classes</th>
-                        <th width="260">Actions</th>
+                        <th width="320">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -51,6 +51,7 @@
                                 @if($firstClass)
                                     <a href="{{ route('exam-assessment-classes.setup.edit', $firstClass) }}" class="btn btn-sm btn-info">Setup</a>
                                     <a href="{{ route('exam-assessment-classes.marks.create', $firstClass) }}" class="btn btn-sm btn-success">Marks</a>
+                                    <a href="{{ route('exam-assessment-classes.results.index', $firstClass) }}" class="btn btn-sm btn-primary">Results</a>
                                 @endif
                                 <form action="{{ route('exam-assessments.destroy', $assessment) }}" method="POST" class="d-inline"
                                     onsubmit="return confirm('Delete this assessment?');">

@@ -23,6 +23,14 @@
             </div>
             <div class="col-md-7">
                 <a href="{{ route('exam-assessment-classes.setup.edit', $examAssessmentClass) }}" class="btn btn-sm btn-info">Setup For Current Class</a>
+                <form method="POST" action="{{ route('exam-assessment-classes.results.publish', $examAssessmentClass) }}" class="d-inline"
+                    onsubmit="return confirm('Publish or republish results for this class?');">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-success">
+                        {{ $examAssessmentClass->is_published ? 'Republish Results' : 'Publish Results' }}
+                    </button>
+                </form>
+                <a href="{{ route('exam-assessment-classes.results.index', $examAssessmentClass) }}" class="btn btn-sm btn-warning">View Results</a>
                 <a href="{{ route('exam-assessments.index') }}" class="btn btn-sm btn-secondary">Back To Assessments</a>
             </div>
         </div>
@@ -32,7 +40,12 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between">
         <h3 class="card-title">Enter Marks</h3>
-        <a href="{{ route('exam-assessment-classes.setup.edit', $examAssessmentClass) }}" class="btn btn-sm btn-info">Back To Setup</a>
+        <div>
+            <span class="badge {{ $examAssessmentClass->is_published ? 'badge-success' : 'badge-warning' }} mr-2">
+                {{ $examAssessmentClass->is_published ? 'Results Published' : 'Results Not Published' }}
+            </span>
+            <a href="{{ route('exam-assessment-classes.setup.edit', $examAssessmentClass) }}" class="btn btn-sm btn-info">Back To Setup</a>
+        </div>
     </div>
     <div class="card-body">
         @if(session('success'))
