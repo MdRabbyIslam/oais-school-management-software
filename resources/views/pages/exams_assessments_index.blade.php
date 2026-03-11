@@ -36,6 +36,7 @@
                 <tbody>
                     @forelse($assessments as $assessment)
                         @php($firstClass = $assessment->assessmentClasses->first())
+                        @php($hasMarks = $assessment->assessmentClasses()->whereHas('assessmentSubjects.marks')->exists())
                         <tr>
                             <td>{{ $assessment->name }}</td>
                             <td>{{ $assessment->academicYear->name ?? '-' }}</td>
@@ -53,10 +54,11 @@
                                     <a href="{{ route('exam-assessment-classes.marks.create', $firstClass) }}" class="btn btn-sm btn-success">Marks</a>
                                     <a href="{{ route('exam-assessment-classes.results.index', $firstClass) }}" class="btn btn-sm btn-primary">Results</a>
                                 @endif
-                                <form action="{{ route('exam-assessments.destroy', $assessment) }}" method="POST" class="d-inline"
-                                    onsubmit="return confirm('Delete this assessment?');">
+                                <form action="{{ route('exam-assessments.destroy', $assessment) }}" method="POST" class="d-inline js-assessment-delete-form"
+                                    data-has-marks="{{ $hasMarks ? '1' : '0' }}">
                                     @csrf
                                     @method('DELETE')
+                                    <input type="hidden" name="force_delete_with_marks" value="{{ $hasMarks ? '1' : '0' }}">
                                     <button class="btn btn-sm btn-danger">Delete</button>
                                 </form>
                             </td>
@@ -75,4 +77,22 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const forms = document.querySelectorAll('.js-assessment-delete-form');
+        forms.forEach((form) => {
+            form.addEventListener('submit', function (event) {
+                const hasMarks = form.dataset.hasMarks === '1';
+                const message = hasMarks
+                    ? 'This assessment already has marks/results. If you continue, all related marks and results will be deleted permanently. Continue?'
+                    : 'Delete this assessment?';
+
+                if (!window.confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        });
+    })();
+</script>
 @endsection

@@ -9,6 +9,7 @@ use App\Models\ExamAssessment;
 use App\Models\SchoolClass;
 use App\Models\Term;
 use App\Services\Exam\ExamAssessmentService;
+use Illuminate\Http\Request;
 
 class ExamAssessmentController extends Controller
 {
@@ -89,20 +90,23 @@ class ExamAssessmentController extends Controller
         return $redirect;
     }
 
-    public function destroy(ExamAssessment $examAssessment)
+    public function destroy(Request $request, ExamAssessment $examAssessment)
     {
         $this->authorize('manage-exams');
         $hasMarks = $examAssessment->assessmentClasses()
             ->whereHas('assessmentSubjects.marks')
             ->exists();
 
-        if ($hasMarks) {
-            return back()->with('error', 'Cannot delete assessment because marks already exist.');
+        if ($hasMarks && !$request->boolean('force_delete_with_marks')) {
+            return back()->with('error', 'This assessment has marks. Confirm delete to proceed.');
         }
 
         $examAssessment->delete();
 
         return redirect()->route('exam-assessments.index')
-            ->with('success', 'Exam assessment deleted successfully.');
+            ->with('success', $hasMarks
+                ? 'Exam assessment deleted successfully (including existing marks/results).'
+                : 'Exam assessment deleted successfully.'
+            );
     }
 }
