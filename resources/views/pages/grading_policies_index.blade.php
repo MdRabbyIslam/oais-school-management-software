@@ -56,6 +56,9 @@
                         <th>Class</th>
                         <th>Subject</th>
                         <th>Marks</th>
+                        <th>Weight</th>
+                        <th>Optional</th>
+                        <th>Components</th>
                         <th>Scheme</th>
                         <th>Status</th>
                         <th width="180">Actions</th>
@@ -67,6 +70,9 @@
                             <td>{{ $policy->schoolClass->name ?? 'Class #' . $policy->class_id }}</td>
                             <td>{{ $policy->subject->name ?? 'Subject #' . $policy->subject_id }}</td>
                             <td>{{ $policy->pass_marks }}/{{ $policy->total_marks }}</td>
+                            <td>{{ $policy->weight ?? '1.00' }}</td>
+                            <td>{{ $policy->is_optional ? 'Yes' : 'No' }}</td>
+                            <td>{{ $policy->components->count() ?: '-' }}</td>
                             <td>{{ $policy->gradeScheme->name ?? 'Scheme #' . $policy->grade_scheme_id }}</td>
                             <td>
                                 <span class="badge {{ $policy->is_active ? 'badge-success' : 'badge-secondary' }}">
@@ -84,7 +90,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center">No grading policies found.</td></tr>
+                        <tr><td colspan="9" class="text-center">No grading policies found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

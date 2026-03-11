@@ -5,6 +5,7 @@
 @section('content_header_subtitle', $examAssessmentClass->examAssessment->name . ' - ' . $examAssessmentClass->schoolClass->name)
 
 @section('content_body')
+@php($assessmentStatus = $examAssessmentClass->examAssessment->status)
 <div class="card">
     <div class="card-body py-2">
         <div class="form-row align-items-end">
@@ -22,14 +23,16 @@
                 </select>
             </div>
             <div class="col-md-7">
-                <form method="POST" action="{{ route('exam-assessment-classes.results.publish', $examAssessmentClass) }}" class="d-inline"
-                    onsubmit="return confirm('Publish or republish results for this class?');">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-success">
-                        {{ $examAssessmentClass->is_published ? 'Republish Results' : 'Publish Results' }}
-                    </button>
-                </form>
-                <a href="{{ route('exam-assessment-classes.results.download-class-pdf', $examAssessmentClass) }}" class="btn btn-sm btn-primary">Download Full PDF</a>
+                @if($assessmentStatus === 'published')
+                    <form method="POST" action="{{ route('exam-assessment-classes.results.publish', $examAssessmentClass) }}" class="d-inline"
+                        onsubmit="return confirm('Publish or republish results for this class?');">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-success">
+                            {{ $examAssessmentClass->is_published ? 'Republish Results' : 'Publish Results' }}
+                        </button>
+                    </form>
+                    <a href="{{ route('exam-assessment-classes.results.download-class-pdf', $examAssessmentClass) }}" class="btn btn-sm btn-primary">Download Full PDF</a>
+                @endif
                 <a href="{{ route('exam-assessment-classes.marks.create', $examAssessmentClass) }}" class="btn btn-sm btn-info">Back To Marks</a>
                 <a href="{{ route('exam-assessment-classes.setup.edit', $examAssessmentClass) }}" class="btn btn-sm btn-secondary">Back To Setup</a>
             </div>
@@ -40,8 +43,8 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title">Result Sheet</h3>
-        <span class="badge {{ $examAssessmentClass->is_published ? 'badge-success' : 'badge-warning' }}">
-            {{ $examAssessmentClass->is_published ? 'Published' : 'Not Published' }}
+        <span class="badge badge-info">
+            Assessment: {{ strtoupper($assessmentStatus) }}
         </span>
     </div>
     <div class="card-body">
@@ -50,6 +53,11 @@
         @endif
         @if(session('error'))
             <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
+        @if($assessmentStatus !== 'published')
+            <div class="alert alert-info mb-3">
+                This assessment is <strong>{{ strtoupper($assessmentStatus) }}</strong>. Set status to <strong>Published</strong> to enable result publishing and PDF download.
+            </div>
         @endif
 
         <div class="table-responsive">
@@ -83,8 +91,12 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ route('exam-assessment-classes.results.show', [$examAssessmentClass, $row->studentEnrollment]) }}" class="btn btn-sm btn-warning">View</a>
-                                <a href="{{ route('exam-assessment-classes.results.download', [$examAssessmentClass, $row->studentEnrollment]) }}" class="btn btn-sm btn-primary">PDF</a>
+                                @if($assessmentStatus === 'published')
+                                    <a href="{{ route('exam-assessment-classes.results.show', [$examAssessmentClass, $row->studentEnrollment]) }}" class="btn btn-sm btn-warning">View</a>
+                                    <a href="{{ route('exam-assessment-classes.results.download', [$examAssessmentClass, $row->studentEnrollment]) }}" class="btn btn-sm btn-primary">PDF</a>
+                                @else
+                                    <button type="button" class="btn btn-sm btn-secondary" disabled>Locked By Status</button>
+                                @endif
                             </td>
                         </tr>
                     @empty

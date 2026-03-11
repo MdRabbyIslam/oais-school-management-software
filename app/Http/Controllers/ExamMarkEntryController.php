@@ -70,6 +70,10 @@ class ExamMarkEntryController extends Controller
     public function store(StoreExamMarksRequest $request, ExamAssessmentClass $examAssessmentClass)
     {
         $this->authorize('manage-exams');
+        if ($examAssessmentClass->examAssessment()->value('status') === 'locked') {
+            return back()->with('error', 'Assessment is locked. Marks cannot be modified.');
+        }
+
         $assessmentSubject = $examAssessmentClass->assessmentSubjects()
             ->with('components')
             ->findOrFail($request->integer('assessment_subject_id'));

@@ -41,7 +41,12 @@
                             <td>{{ $assessment->name }}</td>
                             <td>{{ $assessment->academicYear->name ?? '-' }}</td>
                             <td>{{ $assessment->term->name ?? '-' }}</td>
-                            <td><span class="badge badge-secondary">{{ strtoupper($assessment->status) }}</span></td>
+                            <td>
+                                <span class="badge
+                                    {{ $assessment->status === 'published' ? 'badge-success' : ($assessment->status === 'locked' ? 'badge-dark' : 'badge-secondary') }}">
+                                    {{ strtoupper($assessment->status) }}
+                                </span>
+                            </td>
                             <td>
                                 @foreach($assessment->assessmentClasses as $assessmentClass)
                                     <span class="badge badge-light">{{ $assessmentClass->schoolClass->name ?? 'Class #' . $assessmentClass->class_id }}</span>

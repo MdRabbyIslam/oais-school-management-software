@@ -42,13 +42,9 @@
                             <td>{{ $subject['pass_marks'] }}</td>
                             <td>{{ $subject['is_absent'] ? 'ABSENT' : ($obtained ?? '-') }}</td>
                             <td>
-                                @if($subject['is_absent'])
-                                    <span class="badge badge-danger">FAIL</span>
-                                @else
-                                    <span class="badge {{ (float) ($obtained ?? 0) >= (float) $subject['pass_marks'] ? 'badge-success' : 'badge-danger' }}">
-                                        {{ (float) ($obtained ?? 0) >= (float) $subject['pass_marks'] ? 'PASS' : 'FAIL' }}
-                                    </span>
-                                @endif
+                                <span class="badge {{ $subject['is_pass'] ? 'badge-success' : 'badge-danger' }}">
+                                    {{ $subject['is_pass'] ? 'PASS' : 'FAIL' }}
+                                </span>
                             </td>
                         </tr>
                     @endforeach
@@ -58,4 +54,3 @@
     </div>
 </div>
 @endsection
-

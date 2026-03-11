@@ -5,6 +5,7 @@
 @section('content_header_subtitle', $examAssessmentClass->examAssessment->name . ' - ' . $examAssessmentClass->schoolClass->name)
 
 @section('content_body')
+@php($assessmentStatus = $examAssessmentClass->examAssessment->status)
 <div class="card">
     <div class="card-body py-2">
         <div class="form-row align-items-end">
@@ -23,13 +24,15 @@
             </div>
             <div class="col-md-7">
                 <a href="{{ route('exam-assessment-classes.setup.edit', $examAssessmentClass) }}" class="btn btn-sm btn-info">Setup For Current Class</a>
-                <form method="POST" action="{{ route('exam-assessment-classes.results.publish', $examAssessmentClass) }}" class="d-inline"
-                    onsubmit="return confirm('Publish or republish results for this class?');">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-success">
-                        {{ $examAssessmentClass->is_published ? 'Republish Results' : 'Publish Results' }}
-                    </button>
-                </form>
+                @if($assessmentStatus === 'published')
+                    <form method="POST" action="{{ route('exam-assessment-classes.results.publish', $examAssessmentClass) }}" class="d-inline"
+                        onsubmit="return confirm('Publish or republish results for this class?');">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-success">
+                            {{ $examAssessmentClass->is_published ? 'Republish Results' : 'Publish Results' }}
+                        </button>
+                    </form>
+                @endif
                 <a href="{{ route('exam-assessment-classes.results.index', $examAssessmentClass) }}" class="btn btn-sm btn-warning">View Results</a>
                 <a href="{{ route('exam-assessments.index') }}" class="btn btn-sm btn-secondary">Back To Assessments</a>
             </div>
@@ -41,6 +44,7 @@
     <div class="card-header d-flex justify-content-between">
         <h3 class="card-title">Enter Marks</h3>
         <div>
+            <span class="badge badge-info mr-2">Assessment: {{ strtoupper($assessmentStatus) }}</span>
             <span class="badge {{ $examAssessmentClass->is_published ? 'badge-success' : 'badge-warning' }} mr-2">
                 {{ $examAssessmentClass->is_published ? 'Results Published' : 'Results Not Published' }}
             </span>
@@ -56,6 +60,11 @@
         @endif
         @if($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>
+        @endif
+        @if($assessmentStatus === 'locked')
+            <div class="alert alert-warning">This assessment is locked. Marks cannot be modified.</div>
+        @elseif($assessmentStatus === 'draft')
+            <div class="alert alert-info">Assessment is in draft. Result publish/download actions are unavailable until status becomes Published.</div>
         @endif
 
         @if($assessmentSubjects->isEmpty())
@@ -148,7 +157,11 @@
                         </table>
                     </div>
 
-                    <button type="submit" class="btn btn-success">Save Marks</button>
+                    @if($assessmentStatus !== 'locked')
+                        <button type="submit" class="btn btn-success">Save Marks</button>
+                    @else
+                        <button type="button" class="btn btn-secondary" disabled>Save Marks (Locked)</button>
+                    @endif
                 </form>
             @endif
         @endif

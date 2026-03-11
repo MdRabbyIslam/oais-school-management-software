@@ -94,6 +94,7 @@ class ExamAssessmentService
         $policiesBySubject = GradingPolicy::query()
             ->where('class_id', $assessmentClass->class_id)
             ->where('is_active', true)
+            ->with('components')
             ->get()
             ->keyBy('subject_id');
 
@@ -116,12 +117,21 @@ class ExamAssessmentService
                     'grading_policy_id' => $policy->id,
                     'total_marks' => $policy->total_marks,
                     'pass_marks' => $policy->pass_marks,
-                    'is_optional' => false,
-                    'weight' => 1.00,
+                    'is_optional' => (bool) $policy->is_optional,
+                    'weight' => $policy->weight ?? 1.00,
                 ]
             );
 
             if ($subject->wasRecentlyCreated) {
+                foreach ($policy->components as $component) {
+                    $subject->components()->create([
+                        'component_name' => $component->component_name,
+                        'component_code' => $component->component_code,
+                        'total_marks' => $component->total_marks,
+                        'pass_marks' => $component->pass_marks,
+                        'sort_order' => $component->sort_order ?? 1,
+                    ]);
+                }
                 $initializedSubjects++;
             }
         }

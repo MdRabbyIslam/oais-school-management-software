@@ -23,6 +23,7 @@ class ExamResultService
                 'examAssessment',
                 'assessmentSubjects.gradingPolicy.gradeScheme.items',
                 'assessmentSubjects.subject',
+                'assessmentSubjects.components',
             ]);
 
             $subjects = $assessmentClass->assessmentSubjects;
@@ -39,6 +40,7 @@ class ExamResultService
                 ->get();
 
             $markMap = ExamMark::query()
+                ->with('components')
                 ->whereIn('assessment_subject_id', $subjects->pluck('id'))
                 ->whereIn('student_enrollment_id', $enrollments->pluck('id'))
                 ->get()
@@ -73,7 +75,7 @@ class ExamResultService
                         $subjectSetup->gradingPolicy?->gradeScheme?->items ?? collect()
                     );
                     $subjectGpa = (float) ($gradeRow['gpa'] ?? 0);
-                    $subjectPassed = $obtained >= $passMarks;
+                    $subjectPassed = $this->isSubjectPass($subjectSetup, $mark, $obtained, $passMarks);
 
                     $weightedObtained += $obtained * $weight;
                     $weightedTotal += $totalMarks * $weight;
@@ -192,5 +194,33 @@ class ExamResultService
             $position++;
             $result->update(['position' => $position]);
         }
+    }
+
+    private function isSubjectPass($subjectSetup, ?ExamMark $mark, float $obtained, float $passMarks): bool
+    {
+        if ($obtained < $passMarks) {
+            return false;
+        }
+
+        if ($subjectSetup->components->isEmpty()) {
+            return true;
+        }
+
+        $componentMarks = $mark?->components?->keyBy('assessment_subject_component_id') ?? collect();
+        foreach ($subjectSetup->components as $componentSetup) {
+            $passMark = (float) ($componentSetup->pass_marks ?? 0);
+            $componentMark = $componentMarks->get($componentSetup->id);
+
+            $obtainedComponent = null;
+            if ($componentMark && !$componentMark->is_absent && $componentMark->marks_obtained !== null) {
+                $obtainedComponent = (float) $componentMark->marks_obtained;
+            }
+
+            if ($obtainedComponent === null || $obtainedComponent < $passMark) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

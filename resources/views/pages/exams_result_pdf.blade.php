@@ -53,11 +53,7 @@
                     <td>{{ $subject['pass_marks'] }}</td>
                     <td>{{ $subject['is_absent'] ? 'ABSENT' : ($obtained ?? '-') }}</td>
                     <td>
-                        @if($subject['is_absent'])
-                            FAIL
-                        @else
-                            {{ (float) ($obtained ?? 0) >= (float) $subject['pass_marks'] ? 'PASS' : 'FAIL' }}
-                        @endif
+                        {{ $subject['is_pass'] ? 'PASS' : 'FAIL' }}
                     </td>
                 </tr>
             @endforeach
@@ -65,4 +61,3 @@
     </table>
 </body>
 </html>
-

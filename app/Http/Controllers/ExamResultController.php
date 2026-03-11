@@ -20,6 +20,9 @@ class ExamResultController extends Controller
     public function publish(ExamAssessmentClass $examAssessmentClass)
     {
         $this->authorize('manage-exams');
+        if (!$this->isResultOperationAllowed($examAssessmentClass)) {
+            return back()->with('error', 'Set assessment status to Published to publish results.');
+        }
 
         $summary = $this->resultService->publish($examAssessmentClass, (int) auth()->id());
 
@@ -51,6 +54,9 @@ class ExamResultController extends Controller
     public function show(ExamAssessmentClass $examAssessmentClass, StudentEnrollment $studentEnrollment)
     {
         $this->authorize('manage-exams');
+        if (!$this->isResultOperationAllowed($examAssessmentClass)) {
+            return back()->with('error', 'Result view is available only when assessment status is Published.');
+        }
 
         $examAssessmentClass->load(['examAssessment', 'schoolClass', 'assessmentSubjects.subject', 'assessmentSubjects.components']);
         $studentEnrollment->load('student');
@@ -67,6 +73,9 @@ class ExamResultController extends Controller
     public function download(ExamAssessmentClass $examAssessmentClass, StudentEnrollment $studentEnrollment)
     {
         $this->authorize('manage-exams');
+        if (!$this->isResultOperationAllowed($examAssessmentClass)) {
+            return back()->with('error', 'Result download is available only when assessment status is Published.');
+        }
 
         $examAssessmentClass->load(['examAssessment', 'schoolClass', 'assessmentSubjects.subject', 'assessmentSubjects.components']);
         $studentEnrollment->load('student');
@@ -85,6 +94,9 @@ class ExamResultController extends Controller
     public function downloadClassPdf(ExamAssessmentClass $examAssessmentClass)
     {
         $this->authorize('manage-exams');
+        if (!$this->isResultOperationAllowed($examAssessmentClass)) {
+            return back()->with('error', 'Result download is available only when assessment status is Published.');
+        }
 
         $examAssessmentClass->load(['examAssessment', 'schoolClass']);
 
@@ -115,9 +127,49 @@ class ExamResultController extends Controller
                 'obtained_marks' => $mark?->marks_obtained,
                 'is_absent' => (bool) ($mark?->is_absent ?? false),
                 'components' => $mark?->components ?? collect(),
+                'is_pass' => $this->isSubjectPassForView($assessmentSubject, $mark),
             ];
         }
 
         return $subjectRows;
+    }
+
+    private function isSubjectPassForView($assessmentSubject, $mark): bool
+    {
+        $obtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
+            ? (float) $mark->marks_obtained
+            : 0.0;
+
+        if ($obtained < (float) $assessmentSubject->pass_marks) {
+            return false;
+        }
+
+        if ($assessmentSubject->components->isEmpty()) {
+            return true;
+        }
+
+        $componentMarks = $mark?->components?->keyBy('assessment_subject_component_id') ?? collect();
+        foreach ($assessmentSubject->components as $componentSetup) {
+            $passMark = (float) ($componentSetup->pass_marks ?? 0);
+            $componentMark = $componentMarks->get($componentSetup->id);
+            $componentObtained = ($componentMark && !$componentMark->is_absent && $componentMark->marks_obtained !== null)
+                ? (float) $componentMark->marks_obtained
+                : null;
+
+            if ($componentObtained === null || $componentObtained < $passMark) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isResultOperationAllowed(ExamAssessmentClass $examAssessmentClass): bool
+    {
+        $status = $examAssessmentClass->relationLoaded('examAssessment')
+            ? $examAssessmentClass->examAssessment->status
+            : $examAssessmentClass->examAssessment()->value('status');
+
+        return $status === 'published';
     }
 }

@@ -63,6 +63,9 @@
                     <option value="published" {{ $selectedStatus === 'published' ? 'selected' : '' }}>Published</option>
                     <option value="locked" {{ $selectedStatus === 'locked' ? 'selected' : '' }}>Locked</option>
                 </select>
+                <small class="form-text text-muted">
+                    Draft: setup/marks allowed, result publish/download hidden. Published: result publish/download allowed. Locked: setup and marks editing blocked.
+                </small>
                 @error('status') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
 

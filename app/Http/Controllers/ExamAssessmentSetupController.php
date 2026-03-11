@@ -20,6 +20,8 @@ class ExamAssessmentSetupController extends Controller
     public function edit(ExamAssessmentClass $examAssessmentClass)
     {
         $this->authorize('manage-exams');
+        $syncSummary = $this->setupService->syncFromPolicies($examAssessmentClass);
+
         $examAssessmentClass->load([
             'examAssessment.term',
             'examAssessment.academicYear',
@@ -47,16 +49,19 @@ class ExamAssessmentSetupController extends Controller
 
         return view('pages.exams_setup_edit', compact(
             'examAssessmentClass',
-            'subjects',
-            'policiesBySubject',
             'subjectsWithoutPolicy',
-            'assessmentClasses'
+            'assessmentClasses',
+            'syncSummary'
         ));
     }
 
     public function storeSubject(StoreExamAssessmentSubjectRequest $request, ExamAssessmentClass $examAssessmentClass)
     {
         $this->authorize('manage-exams');
+        if ($examAssessmentClass->examAssessment()->value('status') === 'locked') {
+            return back()->with('error', 'Assessment is locked. Subject setup cannot be changed.');
+        }
+
         $this->setupService->upsertSubject($examAssessmentClass, $request->validated());
 
         return back()->with('success', 'Exam subject setup saved successfully.');
@@ -65,6 +70,12 @@ class ExamAssessmentSetupController extends Controller
     public function destroySubject(ExamAssessmentSubject $examAssessmentSubject)
     {
         $this->authorize('manage-exams');
+        if ($examAssessmentSubject->assessmentClass()->whereHas('examAssessment', function ($query) {
+            $query->where('status', 'locked');
+        })->exists()) {
+            return back()->with('error', 'Assessment is locked. Subject setup cannot be deleted.');
+        }
+
         $hasMarks = $examAssessmentSubject->marks()->exists();
         if ($hasMarks) {
             return back()->with('error', 'Cannot delete subject setup because marks already exist.');
