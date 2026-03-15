@@ -31,6 +31,7 @@
                             {{ $examAssessmentClass->is_published ? 'Republish Results' : 'Publish Results' }}
                         </button>
                     </form>
+                    <a href="{{ route('exam-assessment-classes.results.print-class', $examAssessmentClass) }}" target="_blank" class="btn btn-sm btn-dark">Print Results</a>
                     <a href="{{ route('exam-assessment-classes.results.download-class-pdf', $examAssessmentClass) }}" class="btn btn-sm btn-primary">Download Full PDF</a>
                 @endif
                 <a href="{{ route('exam-assessment-classes.marks.create', $examAssessmentClass) }}" class="btn btn-sm btn-info">Back To Marks</a>
@@ -93,6 +94,7 @@
                             <td>
                                 @if($assessmentStatus === 'published')
                                     <a href="{{ route('exam-assessment-classes.results.show', [$examAssessmentClass, $row->studentEnrollment]) }}" class="btn btn-sm btn-warning">View</a>
+                                    <a href="{{ route('exam-assessment-classes.results.print-student', [$examAssessmentClass, $row->studentEnrollment]) }}" target="_blank" class="btn btn-sm btn-dark">Print</a>
                                     <a href="{{ route('exam-assessment-classes.results.download', [$examAssessmentClass, $row->studentEnrollment]) }}" class="btn btn-sm btn-primary">PDF</a>
                                 @else
                                     <button type="button" class="btn btn-sm btn-secondary" disabled>Locked By Status</button>

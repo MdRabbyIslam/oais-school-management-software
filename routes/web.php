@@ -337,10 +337,14 @@ Route::middleware(['auth'])->group(function () {
             ->name('exam-assessment-classes.results.publish');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results', [ExamResultController::class, 'index'])
             ->name('exam-assessment-classes.results.index');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/results/print', [ExamResultController::class, 'printClass'])
+            ->name('exam-assessment-classes.results.print-class');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results/download-full-pdf', [ExamResultController::class, 'downloadClassPdf'])
             ->name('exam-assessment-classes.results.download-class-pdf');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results/{studentEnrollment}', [ExamResultController::class, 'show'])
             ->name('exam-assessment-classes.results.show');
+        Route::get('exam-assessment-classes/{examAssessmentClass}/results/{studentEnrollment}/print', [ExamResultController::class, 'printStudent'])
+            ->name('exam-assessment-classes.results.print-student');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results/{studentEnrollment}/download', [ExamResultController::class, 'download'])
             ->name('exam-assessment-classes.results.download');
     });

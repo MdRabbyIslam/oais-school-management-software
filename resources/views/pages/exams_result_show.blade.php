@@ -9,6 +9,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title">Result Summary</h3>
         <div>
+            <a href="{{ route('exam-assessment-classes.results.print-student', [$examAssessmentClass, $studentEnrollment]) }}" target="_blank" class="btn btn-sm btn-dark">Print</a>
             <a href="{{ route('exam-assessment-classes.results.download', [$examAssessmentClass, $studentEnrollment]) }}" class="btn btn-sm btn-primary">Download PDF</a>
             <a href="{{ route('exam-assessment-classes.results.index', $examAssessmentClass) }}" class="btn btn-sm btn-secondary">Back</a>
         </div>
