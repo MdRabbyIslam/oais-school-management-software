@@ -2,6 +2,7 @@
 
 namespace App\Services\Exam;
 
+use App\Models\ClassTestMark;
 use App\Models\ExamAssessmentClass;
 use App\Models\ExamMark;
 use App\Models\ExamStudentResult;
@@ -46,6 +47,8 @@ class ExamResultService
                 ->get()
                 ->keyBy(fn ($mark) => $mark->assessment_subject_id . ':' . $mark->student_enrollment_id);
 
+            $classTestAverageMap = $this->buildClassTestAverageMap($assessmentClass, $subjects, $enrollments);
+
             $processed = 0;
             $skipped = 0;
 
@@ -65,10 +68,13 @@ class ExamResultService
                     $markKey = $subjectSetup->id . ':' . $enrollment->id;
                     $mark = $markMap->get($markKey);
 
-                    $obtained = 0.0;
+                    $examObtained = 0.0;
                     if ($mark && !$mark->is_absent && $mark->marks_obtained !== null) {
-                        $obtained = (float) $mark->marks_obtained;
+                        $examObtained = (float) $mark->marks_obtained;
                     }
+
+                    $classTestAverage = (float) ($classTestAverageMap[$subjectSetup->subject_id . ':' . $enrollment->id] ?? 0.0);
+                    $obtained = min($totalMarks, $examObtained + $classTestAverage);
 
                     $gradeRow = $this->resolveGrade(
                         $obtained,
@@ -140,6 +146,41 @@ class ExamResultService
         ]);
 
         return $summary;
+    }
+
+    private function buildClassTestAverageMap(ExamAssessmentClass $assessmentClass, $subjects, $enrollments): array
+    {
+        $subjectIds = $subjects->pluck('subject_id')->map(fn ($id) => (int) $id)->values();
+        $enrollmentIds = $enrollments->pluck('id')->map(fn ($id) => (int) $id)->values();
+
+        if ($subjectIds->isEmpty() || $enrollmentIds->isEmpty()) {
+            return [];
+        }
+
+        $query = ClassTestMark::query()
+            ->join('class_tests', 'class_tests.id', '=', 'class_test_marks.class_test_id')
+            ->selectRaw('class_tests.subject_id as subject_id, class_test_marks.student_enrollment_id as student_enrollment_id, AVG(class_test_marks.marks_obtained) as average_marks')
+            ->where('class_tests.academic_year_id', $assessmentClass->examAssessment->academic_year_id)
+            ->where('class_tests.class_id', $assessmentClass->class_id)
+            ->whereIn('class_tests.status', ['published', 'locked'])
+            ->whereIn('class_tests.subject_id', $subjectIds)
+            ->whereIn('class_test_marks.student_enrollment_id', $enrollmentIds)
+            ->where('class_test_marks.is_absent', false)
+            ->whereNotNull('class_test_marks.marks_obtained');
+
+        if ($assessmentClass->examAssessment->term_id) {
+            $query->where('class_tests.term_id', $assessmentClass->examAssessment->term_id);
+        }
+
+        return $query
+            ->groupBy('class_tests.subject_id', 'class_test_marks.student_enrollment_id')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                return [
+                    ((int) $row->subject_id) . ':' . ((int) $row->student_enrollment_id) => round((float) $row->average_marks, 2),
+                ];
+            })
+            ->all();
     }
 
     private function resolveGrade(float $obtained, $schemeItems): array
@@ -224,3 +265,4 @@ class ExamResultService
         return true;
     }
 }
+

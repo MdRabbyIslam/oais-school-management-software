@@ -60,6 +60,12 @@
                 This assessment is <strong>{{ strtoupper($assessmentStatus) }}</strong>. Set status to <strong>Published</strong> to enable result publishing and PDF download.
             </div>
         @endif
+        @if(($draftClassTestsCount ?? 0) > 0)
+            <div class="alert alert-warning mb-3">
+                <strong>AV Warning:</strong> {{ $draftClassTestsCount }} class test(s) are still in <strong>Draft</strong> and will be excluded from AV in exam results.
+                Set those class tests to <strong>Published</strong> or <strong>Locked</strong>, then republish results.
+            </div>
+        @endif
 
         <div class="table-responsive">
             <table class="table table-bordered table-hover">

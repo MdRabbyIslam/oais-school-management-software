@@ -59,7 +59,9 @@
                     <th class="left">Subject</th>
                     <th>Total</th>
                     <th>Pass</th>
-                    <th>Obtained</th>
+                    <th>Term</th>
+                    <th>AV</th>
+                    <th>Final</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -69,7 +71,9 @@
                         <td class="left">{{ $subject['subject'] }}</td>
                         <td>{{ $subject['total_marks'] }}</td>
                         <td>{{ $subject['pass_marks'] }}</td>
-                        <td>{{ $subject['is_absent'] ? 'ABSENT' : ($subject['obtained_marks'] ?? '-') }}</td>
+                        <td>{{ $subject['is_absent'] ? 'ABSENT' : (($subject['term_obtained_marks'] ?? '-') ) }}</td>
+                        <td>{{ number_format((float) ($subject['class_test_average'] ?? 0), 2) }}</td>
+                        <td>{{ $subject['is_absent'] ? '-' : ($subject['obtained_marks'] ?? '-') }}</td>
                         <td>{{ $subject['is_pass'] ? 'PASS' : 'FAIL' }}</td>
                     </tr>
                 @endforeach

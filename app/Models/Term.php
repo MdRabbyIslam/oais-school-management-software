@@ -62,4 +62,12 @@ class Term extends Model
         return $this->hasMany(ExamAssessment::class);
     }
 
+    /**
+     * Get class tests for the term.
+     */
+    public function classTests()
+    {
+        return $this->hasMany(ClassTest::class);
+    }
+
 }

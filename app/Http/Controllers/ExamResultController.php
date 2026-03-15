@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClassTestMark;
+use App\Models\ClassTest;
 use App\Models\ExamAssessmentClass;
 use App\Models\ExamMark;
 use App\Models\ExamStudentResult;
@@ -36,7 +38,7 @@ class ExamResultController extends Controller
     {
         $this->authorize('manage-exams');
 
-        $examAssessmentClass->load(['examAssessment', 'schoolClass']);
+        $examAssessmentClass->load(['examAssessment', 'schoolClass', 'assessmentSubjects']);
         $assessmentClasses = $examAssessmentClass->examAssessment
             ->assessmentClasses()
             ->with('schoolClass')
@@ -49,7 +51,14 @@ class ExamResultController extends Controller
             ->orderBy('position')
             ->paginate(50);
 
-        return view('pages.exams_results_index', compact('examAssessmentClass', 'assessmentClasses', 'results'));
+        $draftClassTestsCount = $this->draftClassTestsCountForAv($examAssessmentClass);
+
+        return view('pages.exams_results_index', compact(
+            'examAssessmentClass',
+            'assessmentClasses',
+            'results',
+            'draftClassTestsCount'
+        ));
     }
 
     public function show(ExamAssessmentClass $examAssessmentClass, StudentEnrollment $studentEnrollment)
@@ -138,6 +147,11 @@ class ExamResultController extends Controller
             ->whereIn('student_enrollment_id', $enrollmentIds)
             ->get()
             ->keyBy(fn ($mark) => $mark->assessment_subject_id . ':' . $mark->student_enrollment_id);
+        $classTestAverageMap = $this->buildClassTestAverageMapForAssessmentClass(
+            $examAssessmentClass,
+            $assessmentSubjects,
+            $enrollmentIds
+        );
 
         $subjectLayouts = $assessmentSubjects->map(function ($assessmentSubject) {
             $components = $assessmentSubject->components
@@ -157,10 +171,12 @@ class ExamResultController extends Controller
             return [
                 'assessment_subject_id' => $assessmentSubject->id,
                 'subject_name' => $assessmentSubject->subject->name ?? ('Subject #' . $assessmentSubject->subject_id),
+                'subject_id' => (int) $assessmentSubject->subject_id,
                 'total_marks' => $assessmentSubject->total_marks,
                 'pass_marks' => (float) $assessmentSubject->pass_marks,
                 'component_columns' => $componentColumns,
                 'show_total_column' => $hasRealComponents,
+                'show_average_column' => true,
             ];
         })->values();
         $gradeItemsByAssessmentSubject = $assessmentSubjects->mapWithKeys(function ($assessmentSubject) {
@@ -171,7 +187,7 @@ class ExamResultController extends Controller
             ];
         });
 
-        $rows = $results->map(function ($result) use ($subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject) {
+        $rows = $results->map(function ($result) use ($subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject, $classTestAverageMap) {
             $subjectData = [];
             $hasFailedMandatorySubject = false;
             foreach ($subjectLayouts as $layout) {
@@ -186,21 +202,26 @@ class ExamResultController extends Controller
                         : null;
                 }
 
-                $obtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
+                $termObtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
                     ? (float) $mark->marks_obtained
                     : null;
-                $subjectPass = $this->isSubjectPassForClassPdf($layout, $mark, $markComponents);
+                $average = (float) ($classTestAverageMap[$layout['subject_id'] . ':' . $result->student_enrollment_id] ?? 0.0);
+                $finalObtained = min(
+                    (float) ($layout['total_marks'] ?? 0),
+                    (float) (($termObtained ?? 0) + $average)
+                );
+                $subjectPass = $this->isSubjectPassForClassPdf($layout, $mark, $markComponents, $finalObtained);
                 if (!$subjectPass) {
                     $hasFailedMandatorySubject = true;
                 }
 
                 $subjectData[$layout['assessment_subject_id']] = [
                     'components' => $componentValues,
-                    'total' => $obtained,
+                    'total' => $termObtained,
+                    'average' => $average,
                     'gpa' => $subjectPass ? $this->resolveSubjectGpaForClassPdf(
                         $layout['assessment_subject_id'],
-                        $marksByKey,
-                        (int) $result->student_enrollment_id,
+                        $finalObtained,
                         $gradeItemsByAssessmentSubject
                     ) : 0.0,
                 ];
@@ -252,6 +273,11 @@ class ExamResultController extends Controller
             ->whereIn('student_enrollment_id', $enrollmentIds)
             ->get()
             ->keyBy(fn ($mark) => $mark->assessment_subject_id . ':' . $mark->student_enrollment_id);
+        $classTestAverageMap = $this->buildClassTestAverageMapForAssessmentClass(
+            $examAssessmentClass,
+            $assessmentSubjects,
+            $enrollmentIds
+        );
 
         $subjectLayouts = $this->buildClassPrintLayouts($assessmentSubjects);
         $gradeItemsByAssessmentSubject = $assessmentSubjects->mapWithKeys(function ($assessmentSubject) {
@@ -262,7 +288,13 @@ class ExamResultController extends Controller
             ];
         });
 
-        $rows = $this->buildClassPrintRows($results, $subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject);
+        $rows = $this->buildClassPrintRows(
+            $results,
+            $subjectLayouts,
+            $marksByKey,
+            $gradeItemsByAssessmentSubject,
+            $classTestAverageMap
+        );
 
         return view('pages.exams_results_full_print', compact('examAssessmentClass', 'subjectLayouts', 'rows'));
     }
@@ -276,48 +308,39 @@ class ExamResultController extends Controller
                 ->where('student_enrollment_id', $enrollmentId)
                 ->first();
 
+            $termObtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
+                ? (float) $mark->marks_obtained
+                : 0.0;
+            $classTestAverage = $this->classTestAverageForSubject($assessmentClass, (int) $assessmentSubject->subject_id, $enrollmentId);
+            $finalObtained = min((float) $assessmentSubject->total_marks, $termObtained + $classTestAverage);
+
             $subjectRows[] = [
                 'subject' => $assessmentSubject->subject->name ?? "Subject #{$assessmentSubject->subject_id}",
                 'total_marks' => $assessmentSubject->total_marks,
                 'pass_marks' => $assessmentSubject->pass_marks,
-                'obtained_marks' => $mark?->marks_obtained,
+                'term_obtained_marks' => $mark?->marks_obtained,
+                'class_test_average' => $classTestAverage,
+                'obtained_marks' => $finalObtained,
                 'is_absent' => (bool) ($mark?->is_absent ?? false),
                 'components' => $mark?->components ?? collect(),
-                'is_pass' => $this->isSubjectPassForView($assessmentSubject, $mark),
+                'is_pass' => $this->isSubjectPassForClassPdf(
+                    [
+                        'pass_marks' => (float) $assessmentSubject->pass_marks,
+                        'component_columns' => $assessmentSubject->components->map(function ($component) {
+                            return [
+                                'id' => $component->id,
+                                'pass_marks' => (float) ($component->pass_marks ?? 0),
+                            ];
+                        })->all(),
+                    ],
+                    $mark,
+                    $mark?->components?->keyBy('assessment_subject_component_id') ?? collect(),
+                    $finalObtained
+                ),
             ];
         }
 
         return $subjectRows;
-    }
-
-    private function isSubjectPassForView($assessmentSubject, $mark): bool
-    {
-        $obtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
-            ? (float) $mark->marks_obtained
-            : 0.0;
-
-        if ($obtained < (float) $assessmentSubject->pass_marks) {
-            return false;
-        }
-
-        if ($assessmentSubject->components->isEmpty()) {
-            return true;
-        }
-
-        $componentMarks = $mark?->components?->keyBy('assessment_subject_component_id') ?? collect();
-        foreach ($assessmentSubject->components as $componentSetup) {
-            $passMark = (float) ($componentSetup->pass_marks ?? 0);
-            $componentMark = $componentMarks->get($componentSetup->id);
-            $componentObtained = ($componentMark && !$componentMark->is_absent && $componentMark->marks_obtained !== null)
-                ? (float) $componentMark->marks_obtained
-                : null;
-
-            if ($componentObtained === null || $componentObtained < $passMark) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private function isResultOperationAllowed(ExamAssessmentClass $examAssessmentClass): bool
@@ -359,15 +382,9 @@ class ExamResultController extends Controller
         return $code !== '' ? substr($code, 0, 1) : 'C';
     }
 
-    private function resolveSubjectGpaForClassPdf(int $assessmentSubjectId, $marksByKey, int $enrollmentId, $gradeItemsByAssessmentSubject): float
+    private function resolveSubjectGpaForClassPdf(int $assessmentSubjectId, float $obtained, $gradeItemsByAssessmentSubject): float
     {
-        $mark = $marksByKey->get($assessmentSubjectId . ':' . $enrollmentId);
-        if (!$mark || $mark->is_absent || $mark->marks_obtained === null) {
-            return 0.0;
-        }
-
         $items = $gradeItemsByAssessmentSubject->get($assessmentSubjectId, collect());
-        $obtained = (float) $mark->marks_obtained;
 
         $matched = $items->first(function ($item) use ($obtained) {
             return $obtained >= (float) $item->min_mark && $obtained <= (float) $item->max_mark;
@@ -376,13 +393,9 @@ class ExamResultController extends Controller
         return $matched ? (float) $matched->gpa : 0.0;
     }
 
-    private function isSubjectPassForClassPdf(array $layout, ?ExamMark $mark, $markComponents): bool
+    private function isSubjectPassForClassPdf(array $layout, ?ExamMark $mark, $markComponents, float $finalObtained): bool
     {
-        $totalObtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
-            ? (float) $mark->marks_obtained
-            : 0.0;
-
-        if ($totalObtained < (float) ($layout['pass_marks'] ?? 0)) {
+        if ($finalObtained < (float) ($layout['pass_marks'] ?? 0)) {
             return false;
         }
 
@@ -419,17 +432,19 @@ class ExamResultController extends Controller
             return [
                 'assessment_subject_id' => $assessmentSubject->id,
                 'subject_name' => $assessmentSubject->subject->name ?? ('Subject #' . $assessmentSubject->subject_id),
+                'subject_id' => (int) $assessmentSubject->subject_id,
                 'total_marks' => $assessmentSubject->total_marks,
                 'pass_marks' => (float) $assessmentSubject->pass_marks,
                 'component_columns' => $componentColumns,
                 'show_total_column' => count($componentColumns) > 0,
+                'show_average_column' => true,
             ];
         })->values();
     }
 
-    private function buildClassPrintRows($results, $subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject)
+    private function buildClassPrintRows($results, $subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject, array $classTestAverageMap)
     {
-        return $results->map(function ($result) use ($subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject) {
+        return $results->map(function ($result) use ($subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject, $classTestAverageMap) {
             $subjectData = [];
             $hasFailedMandatorySubject = false;
 
@@ -445,21 +460,26 @@ class ExamResultController extends Controller
                         : null;
                 }
 
-                $obtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
+                $termObtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
                     ? (float) $mark->marks_obtained
                     : null;
-                $subjectPass = $this->isSubjectPassForClassPdf($layout, $mark, $markComponents);
+                $average = (float) ($classTestAverageMap[$layout['subject_id'] . ':' . $result->student_enrollment_id] ?? 0.0);
+                $finalObtained = min(
+                    (float) ($layout['total_marks'] ?? 0),
+                    (float) (($termObtained ?? 0) + $average)
+                );
+                $subjectPass = $this->isSubjectPassForClassPdf($layout, $mark, $markComponents, $finalObtained);
                 if (!$subjectPass) {
                     $hasFailedMandatorySubject = true;
                 }
 
                 $subjectData[$layout['assessment_subject_id']] = [
                     'components' => $componentValues,
-                    'total' => $obtained,
+                    'total' => $termObtained,
+                    'average' => $average,
                     'gpa' => $subjectPass ? $this->resolveSubjectGpaForClassPdf(
                         $layout['assessment_subject_id'],
-                        $marksByKey,
-                        (int) $result->student_enrollment_id,
+                        $finalObtained,
                         $gradeItemsByAssessmentSubject
                     ) : 0.0,
                 ];
@@ -475,4 +495,81 @@ class ExamResultController extends Controller
             ];
         })->values();
     }
+
+    private function buildClassTestAverageMapForAssessmentClass($examAssessmentClass, $assessmentSubjects, $enrollmentIds): array
+    {
+        $subjectIds = $assessmentSubjects->pluck('subject_id')->map(fn ($id) => (int) $id)->values();
+        if ($subjectIds->isEmpty() || $enrollmentIds->isEmpty()) {
+            return [];
+        }
+
+        $query = ClassTestMark::query()
+            ->join('class_tests', 'class_tests.id', '=', 'class_test_marks.class_test_id')
+            ->selectRaw('class_tests.subject_id as subject_id, class_test_marks.student_enrollment_id as student_enrollment_id, AVG(class_test_marks.marks_obtained) as average_marks')
+            ->where('class_tests.academic_year_id', $examAssessmentClass->examAssessment->academic_year_id)
+            ->where('class_tests.class_id', $examAssessmentClass->class_id)
+            ->whereIn('class_tests.status', ['published', 'locked'])
+            ->whereIn('class_tests.subject_id', $subjectIds)
+            ->whereIn('class_test_marks.student_enrollment_id', $enrollmentIds)
+            ->where('class_test_marks.is_absent', false)
+            ->whereNotNull('class_test_marks.marks_obtained');
+
+        if ($examAssessmentClass->examAssessment->term_id) {
+            $query->where('class_tests.term_id', $examAssessmentClass->examAssessment->term_id);
+        }
+
+        return $query
+            ->groupBy('class_tests.subject_id', 'class_test_marks.student_enrollment_id')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                return [
+                    ((int) $row->subject_id) . ':' . ((int) $row->student_enrollment_id) => round((float) $row->average_marks, 2),
+                ];
+            })
+            ->all();
+    }
+
+    private function classTestAverageForSubject(ExamAssessmentClass $assessmentClass, int $subjectId, int $enrollmentId): float
+    {
+        $query = ClassTestMark::query()
+            ->join('class_tests', 'class_tests.id', '=', 'class_test_marks.class_test_id')
+            ->where('class_tests.academic_year_id', $assessmentClass->examAssessment->academic_year_id)
+            ->where('class_tests.class_id', $assessmentClass->class_id)
+            ->where('class_tests.subject_id', $subjectId)
+            ->whereIn('class_tests.status', ['published', 'locked'])
+            ->where('class_test_marks.student_enrollment_id', $enrollmentId)
+            ->where('class_test_marks.is_absent', false)
+            ->whereNotNull('class_test_marks.marks_obtained');
+
+        if ($assessmentClass->examAssessment->term_id) {
+            $query->where('class_tests.term_id', $assessmentClass->examAssessment->term_id);
+        }
+
+        return round((float) ($query->avg('class_test_marks.marks_obtained') ?? 0), 2);
+    }
+
+    private function draftClassTestsCountForAv(ExamAssessmentClass $assessmentClass): int
+    {
+        $subjectIds = $assessmentClass->assessmentSubjects
+            ->pluck('subject_id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($subjectIds->isEmpty()) {
+            return 0;
+        }
+
+        $query = ClassTest::query()
+            ->where('academic_year_id', $assessmentClass->examAssessment->academic_year_id)
+            ->where('class_id', $assessmentClass->class_id)
+            ->where('status', 'draft')
+            ->whereIn('subject_id', $subjectIds);
+
+        if ($assessmentClass->examAssessment->term_id) {
+            $query->where('term_id', $assessmentClass->examAssessment->term_id);
+        }
+
+        return (int) $query->count();
+    }
 }
+

@@ -342,6 +342,12 @@ return [
             'can'  => 'manage-exams',
         ],
         [
+            'text' => 'Class Tests',
+            'url'  => 'class-tests',
+            'icon' => 'fas fa-clipboard-check',
+            'can'  => 'manage-exams',
+        ],
+        [
             'text' => 'Grade Schemes',
             'url'  => 'grade-schemes',
             'icon' => 'fas fa-list-ol',

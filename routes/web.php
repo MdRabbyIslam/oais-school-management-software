@@ -3,6 +3,9 @@
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\ClassTestController;
+use App\Http\Controllers\ClassTestMarkEntryController;
+use App\Http\Controllers\ClassTestReportController;
 use App\Http\Controllers\ExamAssessmentController;
 use App\Http\Controllers\ExamAssessmentSetupController;
 use App\Http\Controllers\ExamMarkEntryController;
@@ -321,8 +324,23 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('academic_years', AcademicYearController::class);
         Route::resource('terms', TermController::class);
         Route::resource('exam-assessments', ExamAssessmentController::class);
+        Route::get('class-tests/reports', [ClassTestReportController::class, 'index'])
+            ->name('class-tests.reports.index');
+        Route::get('class-tests/reports/print-all-students', [ClassTestReportController::class, 'printAllStudents'])
+            ->name('class-tests.reports.print-all-students');
+        Route::get('class-tests/reports/print-single-student', [ClassTestReportController::class, 'printSingleStudent'])
+            ->name('class-tests.reports.print-single-student');
+        Route::resource('class-tests', ClassTestController::class);
         Route::resource('grade-schemes', GradeSchemeController::class);
         Route::resource('grading-policies', GradingPolicyController::class);
+        Route::get('class-tests/{classTest}/marks', [ClassTestMarkEntryController::class, 'create'])
+            ->name('class-tests.marks.create');
+        Route::post('class-tests/{classTest}/marks', [ClassTestMarkEntryController::class, 'store'])
+            ->name('class-tests.marks.store');
+        Route::get('class-tests/{classTest}/print', [ClassTestMarkEntryController::class, 'print'])
+            ->name('class-tests.print');
+        Route::get('class-tests/{classTest}/print-blank', [ClassTestMarkEntryController::class, 'printBlank'])
+            ->name('class-tests.print-blank');
         Route::get('exam-assessment-classes/{examAssessmentClass}/setup', [ExamAssessmentSetupController::class, 'edit'])
             ->name('exam-assessment-classes.setup.edit');
         Route::post('exam-assessment-classes/{examAssessmentClass}/setup/subjects', [ExamAssessmentSetupController::class, 'storeSubject'])

@@ -66,4 +66,9 @@ class StudentEnrollment extends Model
     {
         return $this->hasMany(ExamStudentResult::class);
     }
+
+    public function classTestMarks()
+    {
+        return $this->hasMany(ClassTestMark::class);
+    }
 }

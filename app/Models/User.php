@@ -79,4 +79,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(ExamMark::class, 'verified_by');
     }
+
+    public function createdClassTests()
+    {
+        return $this->hasMany(ClassTest::class, 'created_by');
+    }
+
+    public function publishedClassTests()
+    {
+        return $this->hasMany(ClassTest::class, 'published_by');
+    }
+
+    public function enteredClassTestMarks()
+    {
+        return $this->hasMany(ClassTestMark::class, 'entered_by');
+    }
 }

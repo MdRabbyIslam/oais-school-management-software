@@ -64,7 +64,7 @@
                     <th class="sl-col" rowspan="2">SL</th>
                     <th class="name-col name-heading" rowspan="2">Students Name</th>
                     @foreach($subjectLayouts as $subjectLayout)
-                        @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + 1)
+                        @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + (($subjectLayout['show_average_column'] ?? false) ? 1 : 0) + 1)
                         <th class="group-heading" colspan="{{ $subjectColumnCount }}">
                             {{ $subjectLayout['subject_name'] }} {{ rtrim(rtrim((string) $subjectLayout['total_marks'], '0'), '.') }}
                         </th>
@@ -84,6 +84,9 @@
                         @endif
                         @if($subjectLayout['show_total_column'])
                             <th class="small-col tiny">T</th>
+                        @endif
+                        @if($subjectLayout['show_average_column'] ?? false)
+                            <th class="small-col tiny">AV</th>
                         @endif
                         <th class="small-col tiny">G.P</th>
                     @endforeach
@@ -105,6 +108,9 @@
                             @endif
                             @if($subjectLayout['show_total_column'])
                                 <td>{{ $cell['total'] === null ? '-' : rtrim(rtrim(number_format((float) $cell['total'], 2, '.', ''), '0'), '.') }}</td>
+                            @endif
+                            @if($subjectLayout['show_average_column'] ?? false)
+                                <td>{{ rtrim(rtrim(number_format((float) ($cell['average'] ?? 0), 2, '.', ''), '0'), '.') }}</td>
                             @endif
                             <td>{{ rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
                         @endforeach

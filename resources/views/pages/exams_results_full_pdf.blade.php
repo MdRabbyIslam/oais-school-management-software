@@ -31,7 +31,7 @@
     @php($finalWidth = 24)
     @php($tableWidth = $slWidth + $nameWidth + ($finalWidth * 3))
     @foreach($subjectLayouts as $subjectLayout)
-        @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + 1)
+        @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + (($subjectLayout['show_average_column'] ?? false) ? 1 : 0) + 1)
         @php($tableWidth += ($subjectColumnCount * $subjectCellWidth))
     @endforeach
 
@@ -40,7 +40,7 @@
             <col style="width: {{ $slWidth }}px;">
             <col style="width: 500px;">
             @foreach($subjectLayouts as $subjectLayout)
-                @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + 1)
+                @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + (($subjectLayout['show_average_column'] ?? false) ? 1 : 0) + 1)
                 @for($i = 0; $i < $subjectColumnCount; $i++)
                     <col style="width: {{ $subjectCellWidth }}px;">
                 @endfor
@@ -54,7 +54,7 @@
                 <th rowspan="2">SL</th>
                 <th class="name-col" rowspan="2">Students Name</th>
                 @foreach($subjectLayouts as $subjectLayout)
-                    @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + 1)
+                    @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + (($subjectLayout['show_average_column'] ?? false) ? 1 : 0) + 1)
                     <th colspan="{{ $subjectColumnCount }}">
                         {{ $subjectLayout['subject_name'] }} {{ rtrim(rtrim((string) $subjectLayout['total_marks'], '0'), '.') }}
                     </th>
@@ -75,6 +75,9 @@
 
                     @if($subjectLayout['show_total_column'])
                         <th class="tiny">T</th>
+                    @endif
+                    @if($subjectLayout['show_average_column'] ?? false)
+                        <th class="tiny">AV</th>
                     @endif
                     <th class="tiny">G.P</th>
                 @endforeach
@@ -98,6 +101,9 @@
 
                         @if($subjectLayout['show_total_column'])
                             <td>{{ $cell['total'] === null ? '-' : rtrim(rtrim(number_format((float) $cell['total'], 2, '.', ''), '0'), '.') }}</td>
+                        @endif
+                        @if($subjectLayout['show_average_column'] ?? false)
+                            <td>{{ rtrim(rtrim(number_format((float) ($cell['average'] ?? 0), 2, '.', ''), '0'), '.') }}</td>
                         @endif
                         <td>{{ rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
                     @endforeach

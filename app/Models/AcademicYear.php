@@ -76,4 +76,12 @@ class AcademicYear extends Model
     {
         return $this->hasMany(ExamAssessment::class);
     }
+
+    /**
+     * Get class tests for the academic year.
+     */
+    public function classTests()
+    {
+        return $this->hasMany(ClassTest::class);
+    }
 }
