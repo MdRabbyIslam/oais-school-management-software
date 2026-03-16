@@ -317,13 +317,16 @@ return [
         // ],
 
         [
+            'header' => 'MAIN',
+        ],
+        [
             'text' => 'Dashboard',
             'url'  => '/',
             'icon' => 'fas fa-fw fa-tachometer-alt',
         ],
 
         [
-            'header' => 'Academic',
+            'header' => 'ACADEMIC',
         ],
         [
             'text' => 'Academic Years',
@@ -335,6 +338,10 @@ return [
             'url'  => 'terms',
             'icon' => 'fas fa-clipboard-list',
         ],
+
+        [
+            'header' => 'EXAMINATION',
+        ],
         [
             'text' => 'Exam Assessments',
             'url'  => 'exam-assessments',
@@ -345,6 +352,12 @@ return [
             'text' => 'Class Tests',
             'url'  => 'class-tests',
             'icon' => 'fas fa-clipboard-check',
+            'can'  => 'manage-exams',
+        ],
+        [
+            'text' => 'Student Extra Marks',
+            'url'  => 'student-term-extra-marks',
+            'icon' => 'fas fa-plus-square',
             'can'  => 'manage-exams',
         ],
         [
@@ -360,9 +373,8 @@ return [
             'can'  => 'manage-exams',
         ],
 
-        // Phase 2 Items
         [
-            'header' => 'MANAGE SCHOOL',
+            'header' => 'SCHOOL MANAGEMENT',
         ],
         [
             'text' => 'Admissions',
@@ -399,11 +411,14 @@ return [
             'url'  => 'teachers',
             'icon' => 'fas fa-user-tie',
         ],
-
         [
             'text' => 'Subject Assignments',
             'url'  => 'subject-assignments',
             'icon' => 'fas fa-user-cog',
+        ],
+
+        [
+            'header' => 'ATTENDANCE',
         ],
         [
             'text' => 'Attendance',
@@ -434,19 +449,16 @@ return [
             'url'  => 'fee-assignments',
             'icon' => 'fas fa-file-invoice',
         ],
-        // invoice
         [
             'text' => 'Invoices',
             'url'  => 'invoices',
             'icon' => 'fas fa-file-invoice-dollar',
         ],
-         // “Generate Invoices” submenu
         [
             'text' => 'Generate Invoices',
             'url'  => 'invoices-generate',
             'icon' => 'fas fa-play-circle',
         ],
-
         [
             'text'    => 'Payments',
             'icon'    => 'fas fa-file-invoice-dollar',
@@ -464,34 +476,34 @@ return [
             ],
         ],
 
-
-         [
-        'header' => 'COMMUNICATION',
-    ],
-    [
-        'text'    => 'SMS',
-        'icon'    => 'fas fa-sms',
-        'submenu' => [
-            [
-                'text' => 'Send SMS',
-                'url'  => 'sms/custom',
-                'icon' => 'fas fa-paper-plane',
-            ],
-            [
-                'text' => 'SMS Logs',
-                'url'  => 'sms/logs',
-                'icon' => 'fas fa-history',
+        [
+            'header' => 'COMMUNICATION',
+        ],
+        [
+            'text'    => 'SMS',
+            'icon'    => 'fas fa-sms',
+            'submenu' => [
+                [
+                    'text' => 'Send SMS',
+                    'url'  => 'sms/custom',
+                    'icon' => 'fas fa-paper-plane',
+                ],
+                [
+                    'text' => 'SMS Logs',
+                    'url'  => 'sms/logs',
+                    'icon' => 'fas fa-history',
+                ],
             ],
         ],
-    ],
-         [
-        'header' => 'REPORTS',
-    ],
-    [
-        'text'    => 'Monthly Payment Sheet',
-        'url'  => 'reports/monthly-payment-sheet',
-        'icon'    => 'fas fa-file-invoice-dollar',
-    ],
+
+        [
+            'header' => 'REPORTS',
+        ],
+        [
+            'text' => 'Monthly Payment Sheet',
+            'url'  => 'reports/monthly-payment-sheet',
+            'icon' => 'fas fa-file-invoice-dollar',
+        ],
 
 
 
@@ -742,3 +754,5 @@ return [
 
     'livewire' => false,
 ];
+
+

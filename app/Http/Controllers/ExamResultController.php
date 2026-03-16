@@ -7,6 +7,7 @@ use App\Models\ClassTest;
 use App\Models\ExamAssessmentClass;
 use App\Models\ExamMark;
 use App\Models\ExamStudentResult;
+use App\Models\StudentTermExtraMark;
 use App\Models\StudentEnrollment;
 use App\Services\Exam\ExamResultService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -46,10 +47,17 @@ class ExamResultController extends Controller
             ->sortBy(fn ($item) => (int) optional($item->schoolClass)->class_level)
             ->values();
 
-        $results = ExamStudentResult::with('studentEnrollment.student')
+        $results = ExamStudentResult::query()
+            ->select('exam_student_results.*')
+            ->join('student_enrollments', 'student_enrollments.id', '=', 'exam_student_results.student_enrollment_id')
+            ->with('studentEnrollment.student')
             ->where('assessment_class_id', $examAssessmentClass->id)
-            ->orderBy('position')
+            ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->paginate(50);
+        $extraMarksByEnrollment = $this->extraMarksByEnrollment(
+            $examAssessmentClass,
+            $results->getCollection()->pluck('student_enrollment_id')->values()
+        );
 
         $draftClassTestsCount = $this->draftClassTestsCountForAv($examAssessmentClass);
 
@@ -57,6 +65,7 @@ class ExamResultController extends Controller
             'examAssessmentClass',
             'assessmentClasses',
             'results',
+            'extraMarksByEnrollment',
             'draftClassTestsCount'
         ));
     }
@@ -129,10 +138,12 @@ class ExamResultController extends Controller
 
         $examAssessmentClass->load(['examAssessment.academicYear', 'schoolClass']);
 
-        $results = ExamStudentResult::with('studentEnrollment.student')
+        $results = ExamStudentResult::query()
+            ->select('exam_student_results.*')
+            ->join('student_enrollments', 'student_enrollments.id', '=', 'exam_student_results.student_enrollment_id')
+            ->with('studentEnrollment.student')
             ->where('assessment_class_id', $examAssessmentClass->id)
-            ->orderBy('position')
-            ->orderByDesc('percentage')
+            ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->get();
 
         $assessmentSubjects = $examAssessmentClass->assessmentSubjects()
@@ -187,7 +198,14 @@ class ExamResultController extends Controller
             ];
         });
 
-        $rows = $results->map(function ($result) use ($subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject, $classTestAverageMap) {
+        $extraMarksByEnrollment = $this->extraMarksByEnrollment($examAssessmentClass, $enrollmentIds);
+        $rows = $results->map(function ($result) use (
+            $subjectLayouts,
+            $marksByKey,
+            $gradeItemsByAssessmentSubject,
+            $classTestAverageMap,
+            $extraMarksByEnrollment
+        ) {
             $subjectData = [];
             $hasFailedMandatorySubject = false;
             foreach ($subjectLayouts as $layout) {
@@ -227,11 +245,20 @@ class ExamResultController extends Controller
                 ];
             }
 
+            $extra = $extraMarksByEnrollment[(int) $result->student_enrollment_id] ?? [
+                'homework_marks' => 0.0,
+                'attendance_marks' => 0.0,
+            ];
+            $homeworkMarks = (float) ($extra['homework_marks'] ?? 0.0);
+            $attendanceMarks = (float) ($extra['attendance_marks'] ?? 0.0);
+
             return [
                 'roll' => $result->studentEnrollment->roll_number ?? '-',
                 'student_name' => $result->studentEnrollment->student->name ?? ('Student #' . $result->student_enrollment_id),
                 'subject_data' => $subjectData,
-                'total' => (float) $result->total_obtained,
+                'homework_marks' => $homeworkMarks,
+                'attendance_marks' => $attendanceMarks,
+                'total' => (float) $result->total_obtained + $homeworkMarks + $attendanceMarks,
                 'gpa' => $hasFailedMandatorySubject ? 0.0 : (float) $result->gpa,
                 'position' => $result->position ?? '-',
             ];
@@ -255,10 +282,12 @@ class ExamResultController extends Controller
 
         $examAssessmentClass->load(['examAssessment.academicYear', 'schoolClass']);
 
-        $results = ExamStudentResult::with('studentEnrollment.student')
+        $results = ExamStudentResult::query()
+            ->select('exam_student_results.*')
+            ->join('student_enrollments', 'student_enrollments.id', '=', 'exam_student_results.student_enrollment_id')
+            ->with('studentEnrollment.student')
             ->where('assessment_class_id', $examAssessmentClass->id)
-            ->orderBy('position')
-            ->orderByDesc('percentage')
+            ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->get();
 
         $assessmentSubjects = $examAssessmentClass->assessmentSubjects()
@@ -293,7 +322,8 @@ class ExamResultController extends Controller
             $subjectLayouts,
             $marksByKey,
             $gradeItemsByAssessmentSubject,
-            $classTestAverageMap
+            $classTestAverageMap,
+            $this->extraMarksByEnrollment($examAssessmentClass, $enrollmentIds)
         );
 
         return view('pages.exams_results_full_print', compact('examAssessmentClass', 'subjectLayouts', 'rows'));
@@ -442,9 +472,22 @@ class ExamResultController extends Controller
         })->values();
     }
 
-    private function buildClassPrintRows($results, $subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject, array $classTestAverageMap)
+    private function buildClassPrintRows(
+        $results,
+        $subjectLayouts,
+        $marksByKey,
+        $gradeItemsByAssessmentSubject,
+        array $classTestAverageMap,
+        array $extraMarksByEnrollment
+    )
     {
-        return $results->map(function ($result) use ($subjectLayouts, $marksByKey, $gradeItemsByAssessmentSubject, $classTestAverageMap) {
+        return $results->map(function ($result) use (
+            $subjectLayouts,
+            $marksByKey,
+            $gradeItemsByAssessmentSubject,
+            $classTestAverageMap,
+            $extraMarksByEnrollment
+        ) {
             $subjectData = [];
             $hasFailedMandatorySubject = false;
 
@@ -484,16 +527,47 @@ class ExamResultController extends Controller
                     ) : 0.0,
                 ];
             }
+            $extra = $extraMarksByEnrollment[(int) $result->student_enrollment_id] ?? [
+                'homework_marks' => 0.0,
+                'attendance_marks' => 0.0,
+            ];
+            $homeworkMarks = (float) ($extra['homework_marks'] ?? 0.0);
+            $attendanceMarks = (float) ($extra['attendance_marks'] ?? 0.0);
 
             return [
                 'roll' => $result->studentEnrollment->roll_number ?? '-',
                 'student_name' => $result->studentEnrollment->student->name ?? ('Student #' . $result->student_enrollment_id),
                 'subject_data' => $subjectData,
-                'total' => (float) $result->total_obtained,
+                'homework_marks' => $homeworkMarks,
+                'attendance_marks' => $attendanceMarks,
+                'total' => (float) $result->total_obtained + $homeworkMarks + $attendanceMarks,
                 'gpa' => $hasFailedMandatorySubject ? 0.0 : (float) $result->gpa,
                 'position' => $result->position ?? '-',
             ];
         })->values();
+    }
+
+    private function extraMarksByEnrollment(ExamAssessmentClass $assessmentClass, $enrollmentIds): array
+    {
+        if ($enrollmentIds->isEmpty()) {
+            return [];
+        }
+
+        return StudentTermExtraMark::query()
+            ->where('academic_year_id', $assessmentClass->examAssessment->academic_year_id)
+            ->where('class_id', $assessmentClass->class_id)
+            ->where('term_id', $assessmentClass->examAssessment->term_id)
+            ->whereIn('student_enrollment_id', $enrollmentIds)
+            ->get()
+            ->mapWithKeys(function (StudentTermExtraMark $item) {
+                return [
+                    (int) $item->student_enrollment_id => [
+                        'homework_marks' => (float) ($item->homework_marks ?? 0),
+                        'attendance_marks' => (float) ($item->attendance_marks ?? 0),
+                    ],
+                ];
+            })
+            ->all();
     }
 
     private function buildClassTestAverageMapForAssessmentClass($examAssessmentClass, $assessmentSubjects, $enrollmentIds): array

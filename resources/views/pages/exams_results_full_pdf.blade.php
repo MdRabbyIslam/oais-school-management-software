@@ -28,8 +28,8 @@
     @php($slWidth = 16)
     @php($nameWidth = 180)
     @php($subjectCellWidth = 16)
-    @php($finalWidth = 24)
-    @php($tableWidth = $slWidth + $nameWidth + ($finalWidth * 3))
+    @php($finalWidth = 20)
+    @php($tableWidth = $slWidth + $nameWidth + ($finalWidth * 5))
     @foreach($subjectLayouts as $subjectLayout)
         @php($subjectColumnCount = max(1, count($subjectLayout['component_columns'])) + ($subjectLayout['show_total_column'] ? 1 : 0) + (($subjectLayout['show_average_column'] ?? false) ? 1 : 0) + 1)
         @php($tableWidth += ($subjectColumnCount * $subjectCellWidth))
@@ -48,6 +48,8 @@
             <col style="width: {{ $finalWidth }}px;">
             <col style="width: {{ $finalWidth }}px;">
             <col style="width: {{ $finalWidth }}px;">
+            <col style="width: {{ $finalWidth }}px;">
+            <col style="width: {{ $finalWidth }}px;">
         </colgroup>
         <thead>
             <tr>
@@ -59,6 +61,8 @@
                         {{ $subjectLayout['subject_name'] }} {{ rtrim(rtrim((string) $subjectLayout['total_marks'], '0'), '.') }}
                     </th>
                 @endforeach
+                <th class="final-col" rowspan="2">H. Work</th>
+                <th class="final-col" rowspan="2">Atten.</th>
                 <th class="final-col" rowspan="2">Total</th>
                 <th class="final-col" rowspan="2">GPA</th>
                 <th class="final-col" rowspan="2">Position</th>
@@ -108,6 +112,8 @@
                         <td>{{ rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
                     @endforeach
 
+                    <td><strong>{{ rtrim(rtrim(number_format((float) ($row['homework_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
+                    <td><strong>{{ rtrim(rtrim(number_format((float) ($row['attendance_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
                     <td><strong>{{ rtrim(rtrim(number_format((float) $row['total'], 2, '.', ''), '0'), '.') }}</strong></td>
                     <td><strong>{{ rtrim(rtrim(number_format((float) $row['gpa'], 2, '.', ''), '0'), '.') }}</strong></td>
                     <td><strong>{{ $row['position'] }}</strong></td>

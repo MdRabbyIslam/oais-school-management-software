@@ -17,10 +17,10 @@
         th, td { border: 1px solid #222; padding: 4px 3px; text-align: center; vertical-align: middle; font-size: 14px; }
         thead th { background: #f2f2f2; font-weight: 700; }
         .left { text-align: left; padding-left: 5px; white-space: normal; word-break: break-word; line-height: 1.2; }
-        .name-col { width: 220px; font-weight: 700; }
+        .name-col { width: 180px; font-weight: 700; }
         .sl-col { width: 30px; }
         .small-col { width: 34px; }
-        .final-col { width: 44px; font-weight: 700; }
+        .final-col { width: 25px; font-weight: 700; }
         .vertical-heading {
             writing-mode: vertical-lr;
             text-orientation: mixed;
@@ -69,6 +69,8 @@
                             {{ $subjectLayout['subject_name'] }} {{ rtrim(rtrim((string) $subjectLayout['total_marks'], '0'), '.') }}
                         </th>
                     @endforeach
+                    <th class="final-col vertical-heading" rowspan="2">H. Work</th>
+                    <th class="final-col vertical-heading" rowspan="2">Atten.</th>
                     <th class="final-col vertical-heading" rowspan="2">Total</th>
                     <th class="final-col vertical-heading" rowspan="2">GPA</th>
                     <th class="final-col vertical-heading" rowspan="2">Position</th>
@@ -114,6 +116,8 @@
                             @endif
                             <td>{{ rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
                         @endforeach
+                        <td><strong>{{ rtrim(rtrim(number_format((float) ($row['homework_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
+                        <td><strong>{{ rtrim(rtrim(number_format((float) ($row['attendance_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ rtrim(rtrim(number_format((float) $row['total'], 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ rtrim(rtrim(number_format((float) $row['gpa'], 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ $row['position'] }}</strong></td>

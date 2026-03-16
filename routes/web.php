@@ -24,6 +24,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SmsController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentTermExtraMarkController;
 use App\Http\Controllers\SubjectAssignmentController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\GradingPolicyController;
@@ -324,6 +325,10 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('academic_years', AcademicYearController::class);
         Route::resource('terms', TermController::class);
         Route::resource('exam-assessments', ExamAssessmentController::class);
+        Route::get('student-term-extra-marks', [StudentTermExtraMarkController::class, 'index'])
+            ->name('student-term-extra-marks.index');
+        Route::post('student-term-extra-marks', [StudentTermExtraMarkController::class, 'store'])
+            ->name('student-term-extra-marks.store');
         Route::get('class-tests/reports', [ClassTestReportController::class, 'index'])
             ->name('class-tests.reports.index');
         Route::get('class-tests/reports/print-all-students', [ClassTestReportController::class, 'printAllStudents'])

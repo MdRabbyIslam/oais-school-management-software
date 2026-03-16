@@ -74,6 +74,8 @@
                         <th>Position</th>
                         <th>Roll</th>
                         <th>Student</th>
+                        <th>HW</th>
+                        <th>Attend.</th>
                         <th>Total</th>
                         <th>%</th>
                         <th>GPA</th>
@@ -84,11 +86,17 @@
                 </thead>
                 <tbody>
                     @forelse($results as $row)
+                        @php($extraMarks = $extraMarksByEnrollment[$row->student_enrollment_id] ?? ['homework_marks' => 0, 'attendance_marks' => 0])
+                        @php($homeworkMarks = (float) ($extraMarks['homework_marks'] ?? 0))
+                        @php($attendanceMarks = (float) ($extraMarks['attendance_marks'] ?? 0))
+                        @php($displayTotal = (float) $row->total_obtained + $homeworkMarks + $attendanceMarks)
                         <tr>
                             <td>{{ $row->position ?? '-' }}</td>
                             <td>{{ $row->studentEnrollment->roll_number ?? '-' }}</td>
                             <td>{{ $row->studentEnrollment->student->name ?? 'Student #' . $row->student_enrollment_id }}</td>
-                            <td>{{ $row->total_obtained }}/{{ $row->total_marks }}</td>
+                            <td>{{ rtrim(rtrim(number_format($homeworkMarks, 2, '.', ''), '0'), '.') }}</td>
+                            <td>{{ rtrim(rtrim(number_format($attendanceMarks, 2, '.', ''), '0'), '.') }}</td>
+                            <td>{{ rtrim(rtrim(number_format($displayTotal, 2, '.', ''), '0'), '.') }}/{{ $row->total_marks }}</td>
                             <td>{{ $row->percentage }}</td>
                             <td>{{ $row->gpa }}</td>
                             <td>{{ $row->final_grade }}</td>
@@ -108,7 +116,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="text-center">No results found. Publish results first.</td></tr>
+                        <tr><td colspan="11" class="text-center">No results found. Publish results first.</td></tr>
                     @endforelse
                 </tbody>
             </table>

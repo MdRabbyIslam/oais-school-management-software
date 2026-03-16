@@ -62,6 +62,9 @@
                 @if(($syncSummary['skipped_subjects_without_policy'] ?? 0) > 0)
                     <br>{{ $syncSummary['skipped_subjects_without_policy'] }} subject(s) skipped due to missing active policy.
                 @endif
+                @if(($syncSummary['component_sync_locked_by_marks'] ?? 0) > 0)
+                    <br>{{ $syncSummary['component_sync_locked_by_marks'] }} subject(s) kept existing component structure because marks already exist.
+                @endif
             </div>
         @endif
 
@@ -151,4 +154,3 @@
     })();
 </script>
 @endsection
-

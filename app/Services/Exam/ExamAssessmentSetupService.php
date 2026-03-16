@@ -13,7 +13,7 @@ class ExamAssessmentSetupService
     /**
      * Sync class-subject configuration from active grading policies.
      *
-     * @return array{synced_subjects:int, skipped_subjects_without_policy:int}
+     * @return array{synced_subjects:int, skipped_subjects_without_policy:int, component_sync_locked_by_marks:int}
      */
     public function syncFromPolicies(ExamAssessmentClass $assessmentClass): array
     {
@@ -33,6 +33,7 @@ class ExamAssessmentSetupService
 
             $syncedSubjects = 0;
             $skippedSubjectsWithoutPolicy = 0;
+            $componentSyncLockedByMarks = 0;
 
             foreach ($subjectIds as $subjectId) {
                 $policy = $policiesBySubject->get($subjectId);
@@ -55,15 +56,12 @@ class ExamAssessmentSetupService
                     ]
                 );
 
-                $subject->components()->delete();
-                foreach ($policy->components as $component) {
-                    $subject->components()->create([
-                        'component_name' => $component['component_name'],
-                        'component_code' => $component['component_code'],
-                        'total_marks' => $component['total_marks'],
-                        'pass_marks' => $component['pass_marks'] ?? null,
-                        'sort_order' => $component['sort_order'] ?? 1,
-                    ]);
+                // Keep component IDs stable once marks exist; recreating components
+                // breaks linkage with exam_mark_components.
+                if (!$subject->marks()->exists()) {
+                    $this->syncSubjectComponentsFromPolicy($subject, $policy);
+                } else {
+                    $componentSyncLockedByMarks++;
                 }
 
                 $syncedSubjects++;
@@ -72,6 +70,7 @@ class ExamAssessmentSetupService
             return [
                 'synced_subjects' => $syncedSubjects,
                 'skipped_subjects_without_policy' => $skippedSubjectsWithoutPolicy,
+                'component_sync_locked_by_marks' => $componentSyncLockedByMarks,
             ];
         });
     }
@@ -107,18 +106,29 @@ class ExamAssessmentSetupService
                 ]
             );
 
-            $subject->components()->delete();
-            foreach ($policy->components as $component) {
-                $subject->components()->create([
-                    'component_name' => $component['component_name'],
-                    'component_code' => $component['component_code'],
-                    'total_marks' => $component['total_marks'],
-                    'pass_marks' => $component['pass_marks'] ?? null,
-                    'sort_order' => $component['sort_order'] ?? 1,
+            if ($subject->marks()->exists()) {
+                throw ValidationException::withMessages([
+                    'subject_id' => 'Marks already exist for this subject in this assessment. Component structure cannot be changed now.',
                 ]);
             }
 
+            $this->syncSubjectComponentsFromPolicy($subject, $policy);
+
             return $subject->refresh();
         });
+    }
+
+    private function syncSubjectComponentsFromPolicy(ExamAssessmentSubject $subject, GradingPolicy $policy): void
+    {
+        $subject->components()->delete();
+        foreach ($policy->components as $component) {
+            $subject->components()->create([
+                'component_name' => $component['component_name'],
+                'component_code' => $component['component_code'],
+                'total_marks' => $component['total_marks'],
+                'pass_marks' => $component['pass_marks'] ?? null,
+                'sort_order' => $component['sort_order'] ?? 1,
+            ]);
+        }
     }
 }
