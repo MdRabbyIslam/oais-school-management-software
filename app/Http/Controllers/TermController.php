@@ -8,11 +8,22 @@ use Illuminate\Http\Request;
 
 class TermController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('manage-terms');
-        $terms = Term::with('academicYear')->orderBy('order')->get();
-        return view('pages.terms.index', compact('terms'));
+
+        $selectedAcademicYearId = $request->integer('academic_year_id');
+        $years = AcademicYear::orderBy('start_date', 'desc')->get();
+
+        $terms = Term::with('academicYear')
+            ->when($selectedAcademicYearId > 0, function ($query) use ($selectedAcademicYearId) {
+                $query->where('academic_year_id', $selectedAcademicYearId);
+            })
+            ->orderByDesc('academic_year_id')
+            ->orderBy('order')
+            ->get();
+
+        return view('pages.terms.index', compact('terms', 'years', 'selectedAcademicYearId'));
     }
 
     public function create()

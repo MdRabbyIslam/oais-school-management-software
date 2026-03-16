@@ -28,11 +28,16 @@
                 <select name="term_id" id="term_id" class="form-control">
                     <option value="">None</option>
                     @foreach($terms as $term)
-                        <option value="{{ $term->id }}" {{ (string) old('term_id') === (string) $term->id ? 'selected' : '' }}>
+                        <option
+                            value="{{ $term->id }}"
+                            data-academic-year-id="{{ $term->academic_year_id }}"
+                            {{ (string) old('term_id') === (string) $term->id ? 'selected' : '' }}
+                        >
                             {{ $term->name }}
                         </option>
                     @endforeach
                 </select>
+                <small class="form-text text-muted">Terms are filtered based on the selected academic year.</small>
                 @error('term_id') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
 
@@ -108,9 +113,34 @@
 
 <script>
     (function () {
+        const academicYearSelect = document.getElementById('academic_year_id');
+        const termSelect = document.getElementById('term_id');
         const checkboxes = document.querySelectorAll('.target-class-checkbox');
         const selectAllBtn = document.getElementById('selectAllClasses');
         const unselectAllBtn = document.getElementById('unselectAllClasses');
+
+        function syncTermsByAcademicYear() {
+            if (!academicYearSelect || !termSelect) {
+                return;
+            }
+
+            const selectedAcademicYearId = academicYearSelect.value;
+            const termOptions = termSelect.querySelectorAll('option[data-academic-year-id]');
+
+            termOptions.forEach(function (option) {
+                const isMatch = selectedAcademicYearId !== '' && option.dataset.academicYearId === selectedAcademicYearId;
+                option.hidden = !isMatch;
+                option.disabled = !isMatch;
+            });
+
+            const selectedTerm = termSelect.options[termSelect.selectedIndex];
+            if (selectedTerm && selectedTerm.dataset.academicYearId && selectedTerm.dataset.academicYearId !== selectedAcademicYearId) {
+                termSelect.value = '';
+            }
+        }
+
+        academicYearSelect?.addEventListener('change', syncTermsByAcademicYear);
+        syncTermsByAcademicYear();
 
         selectAllBtn?.addEventListener('click', function () {
             checkboxes.forEach((checkbox) => checkbox.checked = true);

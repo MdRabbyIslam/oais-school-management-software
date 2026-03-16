@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 
 class StoreExamAssessmentRequest extends FormRequest
 {
@@ -23,5 +24,24 @@ class StoreExamAssessmentRequest extends FormRequest
             'class_ids' => ['required', 'array', 'min:1'],
             'class_ids.*' => ['integer', 'exists:classes,id'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $academicYearId = (int) $this->input('academic_year_id');
+            $termId = (int) $this->input('term_id');
+
+            if ($termId > 0 && $academicYearId > 0) {
+                $termMatchesYear = DB::table('terms')
+                    ->where('id', $termId)
+                    ->where('academic_year_id', $academicYearId)
+                    ->exists();
+
+                if (!$termMatchesYear) {
+                    $validator->errors()->add('term_id', 'Selected term does not belong to the selected academic year.');
+                }
+            }
+        });
     }
 }
