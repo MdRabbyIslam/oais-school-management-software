@@ -77,7 +77,13 @@ class ExamResultController extends Controller
             return back()->with('error', 'Result view is available only when assessment status is Published.');
         }
 
-        $examAssessmentClass->load(['examAssessment', 'schoolClass', 'assessmentSubjects.subject', 'assessmentSubjects.components']);
+        $examAssessmentClass->load([
+            'examAssessment',
+            'schoolClass',
+            'assessmentSubjects.subject',
+            'assessmentSubjects.components',
+            'assessmentSubjects.gradingPolicy.gradeScheme.items',
+        ]);
         $studentEnrollment->load('student');
 
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
@@ -125,8 +131,25 @@ class ExamResultController extends Controller
             ->firstOrFail();
 
         $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment->id);
+        $extraMarks = $this->extraMarksByEnrollment($examAssessmentClass, collect([$studentEnrollment->id]))[$studentEnrollment->id] ?? [
+            'homework_marks' => 0.0,
+            'attendance_marks' => 0.0,
+        ];
+        $highestFinalMarksBySubject = $this->highestFinalMarksBySubject($examAssessmentClass);
+        $printView = $this->isNurseryToClassTwo($examAssessmentClass)
+            ? 'pages.exams_result_print'
+            : 'pages.exams_result_print_secondary';
+        // $printView = 'pages.exams_result_print';
+        // $printView = 'pages.exams_result_print_secondary';
 
-        return view('pages.exams_result_print', compact('examAssessmentClass', 'studentEnrollment', 'result', 'subjectRows'));
+        return view($printView, compact(
+            'examAssessmentClass',
+            'studentEnrollment',
+            'result',
+            'subjectRows',
+            'extraMarks',
+            'highestFinalMarksBySubject'
+        ));
     }
 
     public function downloadClassPdf(ExamAssessmentClass $examAssessmentClass)
@@ -340,19 +363,30 @@ class ExamResultController extends Controller
 
             $termObtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
                 ? (float) $mark->marks_obtained
-                : 0.0;
+                : null;
+            $termGrade = $this->resolveTermGradeAndGpa($assessmentSubject, $termObtained);
             $classTestAverage = $this->classTestAverageForSubject($assessmentClass, (int) $assessmentSubject->subject_id, $enrollmentId);
-            $finalObtained = min((float) $assessmentSubject->total_marks, $termObtained + $classTestAverage);
+            $finalObtained = min((float) $assessmentSubject->total_marks, ((float) ($termObtained ?? 0)) + $classTestAverage);
 
             $subjectRows[] = [
+                'subject_id' => (int) $assessmentSubject->subject_id,
                 'subject' => $assessmentSubject->subject->name ?? "Subject #{$assessmentSubject->subject_id}",
                 'total_marks' => $assessmentSubject->total_marks,
                 'pass_marks' => $assessmentSubject->pass_marks,
                 'term_obtained_marks' => $mark?->marks_obtained,
+                'term_grade' => $termGrade['grade'],
+                'term_gpa' => $termGrade['gpa'],
                 'class_test_average' => $classTestAverage,
                 'obtained_marks' => $finalObtained,
                 'is_absent' => (bool) ($mark?->is_absent ?? false),
                 'components' => $mark?->components ?? collect(),
+                // If no component exists, treat the whole term mark as Written by default.
+                'written_marks' => $this->resolveWrittenMarks(
+                    $mark?->components ?? collect(),
+                    $termObtained
+                ),
+                'mcq_marks' => $this->resolveComponentMarks($mark?->components ?? collect(), ['M', 'MCQ']),
+                'practical_marks' => $this->resolveComponentMarks($mark?->components ?? collect(), ['P', 'PRACTICAL']),
                 'is_pass' => $this->isSubjectPassForClassPdf(
                     [
                         'pass_marks' => (float) $assessmentSubject->pass_marks,
@@ -371,6 +405,44 @@ class ExamResultController extends Controller
         }
 
         return $subjectRows;
+    }
+
+    private function resolveTermGradeAndGpa($assessmentSubject, ?float $termObtained): array
+    {
+        if ($termObtained === null) {
+            return ['grade' => null, 'gpa' => null];
+        }
+
+        $items = $assessmentSubject->gradingPolicy?->gradeScheme?->items
+            ? $assessmentSubject->gradingPolicy->gradeScheme->items->sortBy('sort_order')->values()
+            : collect();
+
+        $matched = $items->first(function ($item) use ($termObtained) {
+            return $termObtained >= (float) $item->min_mark && $termObtained <= (float) $item->max_mark;
+        });
+
+        if (!$matched) {
+            return ['grade' => null, 'gpa' => null];
+        }
+
+        return [
+            'grade' => (string) ($matched->letter_grade ?? ''),
+            'gpa' => (float) ($matched->gpa ?? 0.0),
+        ];
+    }
+
+    private function resolveWrittenMarks($components, ?float $termObtained): ?float
+    {
+        $written = $this->resolveComponentMarks($components, ['W', 'WRITTEN']);
+        if ($written !== null) {
+            return $written;
+        }
+
+        if (!$components || $components->isEmpty()) {
+            return $termObtained;
+        }
+
+        return null;
     }
 
     private function isResultOperationAllowed(ExamAssessmentClass $examAssessmentClass): bool
@@ -645,5 +717,94 @@ class ExamResultController extends Controller
 
         return (int) $query->count();
     }
-}
 
+    private function isNurseryToClassTwo(ExamAssessmentClass $assessmentClass): bool
+    {
+        $classLevel = (int) optional($assessmentClass->schoolClass)->class_level;
+        if ($classLevel <= 2) {
+            return true;
+        }
+
+        $className = strtolower(trim((string) optional($assessmentClass->schoolClass)->name));
+        return str_contains($className, 'nursery')
+            || str_contains($className, 'nursary')
+            || str_contains($className, 'class 1')
+            || str_contains($className, 'class 2');
+    }
+
+    private function resolveComponentMarks($components, array $labels): ?float
+    {
+        if (!$components || $components->isEmpty()) {
+            return null;
+        }
+
+        $wanted = array_map(fn ($value) => strtoupper(trim((string) $value)), $labels);
+
+        foreach ($components as $componentMark) {
+            if ($componentMark->is_absent || $componentMark->marks_obtained === null) {
+                continue;
+            }
+
+            $component = $componentMark->assessmentSubjectComponent;
+            $name = strtoupper(trim((string) optional($component)->component_name));
+            $code = strtoupper(trim((string) optional($component)->component_code));
+            if (in_array($name, $wanted, true) || in_array($code, $wanted, true)) {
+                return (float) $componentMark->marks_obtained;
+            }
+        }
+
+        return null;
+    }
+
+    private function highestFinalMarksBySubject(ExamAssessmentClass $assessmentClass): array
+    {
+        $assessmentClass->loadMissing(['examAssessment', 'assessmentSubjects']);
+        $assessmentSubjects = $assessmentClass->assessmentSubjects;
+        if ($assessmentSubjects->isEmpty()) {
+            return [];
+        }
+
+        $enrollmentIds = StudentEnrollment::query()
+            ->where('class_id', $assessmentClass->class_id)
+            ->where('academic_year_id', $assessmentClass->examAssessment->academic_year_id)
+            ->where('status', 'active')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($enrollmentIds->isEmpty()) {
+            return [];
+        }
+
+        $marksByKey = ExamMark::query()
+            ->whereIn('assessment_subject_id', $assessmentSubjects->pluck('id'))
+            ->whereIn('student_enrollment_id', $enrollmentIds)
+            ->whereNotNull('marks_obtained')
+            ->where('is_absent', false)
+            ->get()
+            ->keyBy(fn ($mark) => ((int) $mark->assessment_subject_id) . ':' . ((int) $mark->student_enrollment_id));
+
+        $classTestAverageMap = $this->buildClassTestAverageMapForAssessmentClass(
+            $assessmentClass,
+            $assessmentSubjects,
+            $enrollmentIds
+        );
+
+        $highestBySubject = [];
+        foreach ($assessmentSubjects as $assessmentSubject) {
+            $highest = 0.0;
+            foreach ($enrollmentIds as $enrollmentId) {
+                $term = (float) optional($marksByKey->get($assessmentSubject->id . ':' . $enrollmentId))->marks_obtained;
+                $average = (float) ($classTestAverageMap[((int) $assessmentSubject->subject_id) . ':' . ((int) $enrollmentId)] ?? 0.0);
+                $final = min((float) $assessmentSubject->total_marks, $term + $average);
+                if ($final > $highest) {
+                    $highest = $final;
+                }
+            }
+
+            $highestBySubject[(int) $assessmentSubject->subject_id] = round($highest, 2);
+        }
+
+        return $highestBySubject;
+    }
+}
