@@ -69,6 +69,19 @@
                         @endforeach
                     </select>
                     @error('subject_id') <span class="text-danger">{{ $message }}</span> @enderror
+                    <div class="custom-control custom-checkbox mt-2">
+                        <input
+                            type="checkbox"
+                            class="custom-control-input"
+                            id="create_for_all_subjects"
+                            name="create_for_all_subjects"
+                            value="1"
+                            {{ old('create_for_all_subjects') ? 'checked' : '' }}
+                        >
+                        <label class="custom-control-label" for="create_for_all_subjects">
+                            Create this test for all subjects in selected class
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group col-md-5">
                     <label>Class Test Name</label>
@@ -125,6 +138,7 @@
         const subjectSelect = document.getElementById('subject_id');
         const termOptions = Array.from(termSelect.querySelectorAll('option[value]'));
         const subjectOptions = Array.from(subjectSelect.querySelectorAll('option[value]'));
+        const createForAllSubjectsCheckbox = document.getElementById('create_for_all_subjects');
         const oldTerm = "{{ old('term_id') }}";
         const oldSubject = "{{ old('subject_id') }}";
 
@@ -152,6 +166,15 @@
             });
         }
 
+        function syncSubjectMode() {
+            const isAllSubjectsMode = createForAllSubjectsCheckbox.checked;
+            subjectSelect.required = !isAllSubjectsMode;
+            subjectSelect.disabled = isAllSubjectsMode;
+            if (isAllSubjectsMode) {
+                resetSelect(subjectSelect);
+            }
+        }
+
         academicYearSelect.addEventListener('change', function () {
             filterTermsByYear(this.value);
             resetSelect(termSelect);
@@ -160,7 +183,10 @@
         classSelect.addEventListener('change', function () {
             filterSubjectsByClass(this.value);
             resetSelect(subjectSelect);
+            syncSubjectMode();
         });
+
+        createForAllSubjectsCheckbox.addEventListener('change', syncSubjectMode);
 
         filterTermsByYear(academicYearSelect.value);
         if (oldTerm) {
@@ -177,6 +203,8 @@
                 subjectSelect.value = oldSubject;
             }
         }
+
+        syncSubjectMode();
     })();
 </script>
 @endsection

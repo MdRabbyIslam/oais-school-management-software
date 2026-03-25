@@ -18,6 +18,9 @@
             </span>
             <a href="{{ route('class-tests.print', $classTest) }}" target="_blank" class="btn btn-sm btn-info ml-2">Print Result</a>
             <a href="{{ route('class-tests.print-blank', $classTest) }}" target="_blank" class="btn btn-sm btn-secondary ml-1">Print Blank Sheet</a>
+            @if(isset($relatedClassTests) && $relatedClassTests->count() > 1)
+                <a href="{{ route('class-tests.marks.bulk.create', $classTest) }}" class="btn btn-sm btn-primary ml-1">Bulk Marks (All Subjects)</a>
+            @endif
         </div>
     </div>
     <div class="card-body">

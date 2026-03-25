@@ -18,7 +18,8 @@ class StoreClassTestRequest extends FormRequest
             'academic_year_id' => ['required', 'exists:academic_years,id'],
             'term_id' => ['required', 'exists:terms,id'],
             'class_id' => ['required', 'exists:classes,id'],
-            'subject_id' => ['required', 'exists:subjects,id'],
+            'create_for_all_subjects' => ['nullable', 'boolean'],
+            'subject_id' => ['nullable', 'exists:subjects,id'],
             'name' => ['required', 'string', 'max:150'],
             'test_date' => ['nullable', 'date'],
             'total_marks' => ['required', 'numeric', 'min:1'],
@@ -34,6 +35,7 @@ class StoreClassTestRequest extends FormRequest
             $termId = (int) $this->input('term_id');
             $classId = (int) $this->input('class_id');
             $subjectId = (int) $this->input('subject_id');
+            $createForAllSubjects = $this->boolean('create_for_all_subjects');
             $totalMarks = $this->input('total_marks');
             $passMarks = $this->input('pass_marks');
 
@@ -52,17 +54,33 @@ class StoreClassTestRequest extends FormRequest
                 }
             }
 
-            if ($classId > 0 && $subjectId > 0) {
-                $subjectAssigned = DB::table('class_subject')
+            if ($classId > 0 && $createForAllSubjects) {
+                $hasAssignedSubjects = DB::table('class_subject')
                     ->where('class_id', $classId)
-                    ->where('subject_id', $subjectId)
                     ->exists();
 
-                if (!$subjectAssigned) {
-                    $validator->errors()->add('subject_id', 'Selected subject is not assigned to the selected class.');
+                if (!$hasAssignedSubjects) {
+                    $validator->errors()->add('class_id', 'Selected class has no assigned subjects.');
+                }
+            }
+
+            if (!$createForAllSubjects) {
+                if ($subjectId <= 0) {
+                    $validator->errors()->add('subject_id', 'Subject field is required.');
+                    return;
+                }
+
+                if ($classId > 0) {
+                    $subjectAssigned = DB::table('class_subject')
+                        ->where('class_id', $classId)
+                        ->where('subject_id', $subjectId)
+                        ->exists();
+
+                    if (!$subjectAssigned) {
+                        $validator->errors()->add('subject_id', 'Selected subject is not assigned to the selected class.');
+                    }
                 }
             }
         });
     }
 }
-

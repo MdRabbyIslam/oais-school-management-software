@@ -69,9 +69,13 @@ class ClassTestController extends Controller
     {
         $this->authorize('manage-exams');
 
-        $this->classTestService->create($request->validated(), (int) auth()->id());
+        $result = $this->classTestService->create($request->validated(), (int) auth()->id());
 
-        return redirect()->route('class-tests.index')->with('success', 'Class test created successfully.');
+        $successMessage = $result['created_count'] > 1
+            ? "Class tests created successfully for {$result['created_count']} subjects."
+            : 'Class test created successfully.';
+
+        return redirect()->route('class-tests.index')->with('success', $successMessage);
     }
 
     public function edit(ClassTest $classTest)
@@ -110,5 +114,73 @@ class ClassTestController extends Controller
             ->with('success', $hasMarks
                 ? 'Class test deleted successfully (including existing marks).'
                 : 'Class test deleted successfully.');
+    }
+
+    public function bulkUpdateStatus(Request $request)
+    {
+        $this->authorize('manage-exams');
+
+        $validated = $request->validate([
+            'selected_ids' => ['required', 'array', 'min:1'],
+            'selected_ids.*' => ['required', 'integer', 'exists:class_tests,id'],
+            'status' => ['required', 'in:draft,published,locked'],
+        ]);
+
+        $status = (string) $validated['status'];
+        $selectedIds = collect($validated['selected_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $classTests = ClassTest::whereIn('id', $selectedIds)->get();
+        $updated = 0;
+
+        foreach ($classTests as $classTest) {
+            $payload = ['status' => $status];
+            if ($status === 'published') {
+                $payload['published_by'] = (int) auth()->id();
+                $payload['published_at'] = now();
+            } else {
+                $payload['published_by'] = null;
+                $payload['published_at'] = null;
+            }
+
+            $classTest->update($payload);
+            $updated++;
+        }
+
+        return redirect()->route('class-tests.index')
+            ->with('success', "Status updated for {$updated} class test(s).");
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $this->authorize('manage-exams');
+
+        $validated = $request->validate([
+            'selected_ids' => ['required', 'array', 'min:1'],
+            'selected_ids.*' => ['required', 'integer', 'exists:class_tests,id'],
+            'force_delete_with_marks' => ['nullable', 'boolean'],
+        ]);
+
+        $selectedIds = collect($validated['selected_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $forceDeleteWithMarks = $request->boolean('force_delete_with_marks');
+        $classTests = ClassTest::whereIn('id', $selectedIds)->withCount('marks')->get();
+
+        $deleted = 0;
+        $skippedWithMarks = 0;
+
+        foreach ($classTests as $classTest) {
+            if ($classTest->marks_count > 0 && !$forceDeleteWithMarks) {
+                $skippedWithMarks++;
+                continue;
+            }
+
+            $classTest->delete();
+            $deleted++;
+        }
+
+        $message = "Deleted {$deleted} class test(s).";
+        if ($skippedWithMarks > 0) {
+            $message .= " Skipped {$skippedWithMarks} class test(s) because they have marks.";
+        }
+
+        return redirect()->route('class-tests.index')->with('success', $message);
     }
 }

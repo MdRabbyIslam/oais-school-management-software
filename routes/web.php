@@ -335,6 +335,14 @@ Route::middleware(['auth'])->group(function () {
             ->name('class-tests.reports.print-all-students');
         Route::get('class-tests/reports/print-single-student', [ClassTestReportController::class, 'printSingleStudent'])
             ->name('class-tests.reports.print-single-student');
+        Route::get('class-tests/marks-bulk', [ClassTestMarkEntryController::class, 'bulkIndex'])
+            ->name('class-tests.marks.bulk.index');
+        Route::get('class-tests/marks-bulk/events', [ClassTestMarkEntryController::class, 'bulkEvents'])
+            ->name('class-tests.marks.bulk.events');
+        Route::post('class-tests/bulk-status', [ClassTestController::class, 'bulkUpdateStatus'])
+            ->name('class-tests.bulk-status');
+        Route::post('class-tests/bulk-destroy', [ClassTestController::class, 'bulkDestroy'])
+            ->name('class-tests.bulk-destroy');
         Route::resource('class-tests', ClassTestController::class);
         Route::resource('grade-schemes', GradeSchemeController::class);
         Route::resource('grading-policies', GradingPolicyController::class);
@@ -342,6 +350,10 @@ Route::middleware(['auth'])->group(function () {
             ->name('class-tests.marks.create');
         Route::post('class-tests/{classTest}/marks', [ClassTestMarkEntryController::class, 'store'])
             ->name('class-tests.marks.store');
+        Route::get('class-tests/{classTest}/marks-bulk', [ClassTestMarkEntryController::class, 'createBulk'])
+            ->name('class-tests.marks.bulk.create');
+        Route::post('class-tests/{classTest}/marks-bulk', [ClassTestMarkEntryController::class, 'storeBulk'])
+            ->name('class-tests.marks.bulk.store');
         Route::get('class-tests/{classTest}/print', [ClassTestMarkEntryController::class, 'print'])
             ->name('class-tests.print');
         Route::get('class-tests/{classTest}/print-blank', [ClassTestMarkEntryController::class, 'printBlank'])
