@@ -4,20 +4,40 @@
     <meta charset="UTF-8">
     <title>Result Print (Class 3+)</title>
     <style>
+        @font-face {
+            font-family: 'SutonnyOMJ';
+            src: url('{{ asset('upload/fonts/SutonnyOMJ.ttf') }}') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Times', serif;
+            src: url('{{ asset('upload/fonts/times.ttf') }}') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+
         @page { size: A4 portrait; margin: 7mm; }
-        body { font-family: "Times New Roman", serif; color: #111; margin: 0; }
+        body { font-family: "Times", serif; color: #111; margin: 0; }
         .wrap { border: 1px solid #222; padding: 14px; box-sizing: border-box; }
         .actions { margin-bottom: 8px; }
         .actions button { padding: 6px 12px; }
 
         .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
-        .logo-wrap { width: 100px; text-align: center; }
-        .logo-wrap img { max-width: 88px; max-height: 88px; }
+        .logo-wrap { width: 140px; text-align: center; }
+        .logo-wrap img { max-width: 120px; max-height: 120px; }
         .title { flex: 1; text-align: center; }
-        .bismillah { font-size: 13px; margin-bottom: 2px; }
-        .school-bn { font-size: 34px; font-weight: 700; line-height: 1.1; }
-        .school-en { font-size: 50px; font-weight: 700; line-height: 1.05; margin-top: 2px; }
-        .motto { font-size: 13px; margin-top: 4px; }
+        .bismillah { font-size: 12px; margin-bottom: 10px; }
+        .school-bn {
+            font-family: "SutonnyOMJ", serif;
+            font-size: 45px;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 2px;
+            transform: scaleX(1.5);
+        }
+        .school-en { font-size: 35px; font-weight: 700;transform: scaleX(1.5);font-family: "Times", serif;  line-height: 1; margin-top: 2px; }
+        .motto { font-size: 12px; margin-top: 4px; }
         .term-box {
             display: inline-block;
             border: 1px solid #222;
@@ -28,7 +48,7 @@
             letter-spacing: 0.5px;
         }
 
-        .grade-box { width: 210px; border-collapse: collapse; }
+        .grade-box { width: 150px; border-collapse: collapse; }
         .grade-box th, .grade-box td { border: 1px solid #222; padding: 3px 6px; font-size: 12px; text-align: center; }
 
         .meta { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
@@ -68,10 +88,10 @@
             <img src="{{ asset('upload/images/Logo__Oysis.png') }}" alt="School Logo">
         </div>
         <div class="title">
-            <div class="bismillah">&#x09AC;&#x09BF;&#x09B8;&#x09AE;&#x09BF;&#x09B2;&#x09CD;&#x09B2;&#x09BE;&#x09B9;&#x09BF;&#x09B0; &#x09B0;&#x09BE;&#x09B9;&#x09AE;&#x09BE;&#x09A8;&#x09BF;&#x09B0; &#x09B0;&#x09BE;&#x09B9;&#x09BF;&#x09AE;</div>
-            <div class="school-bn">&#x0993;&#x09DF;&#x09C7;&#x09B8;&#x09BF;&#x09B8; &#x09AE;&#x09A1;&#x09C7;&#x09B2; &#x09B8;&#x09CD;&#x0995;&#x09C1;&#x09B2;</div>
+            <div class="bismillah">বিসমিল্লাহির রহমানির রাহিম</div>
+            <div class="school-bn">ওয়েসিস মডেল স্কুল</div>
             <div class="school-en">Oasis Model School</div>
-            <div class="motto">"&#x09AE;&#x09BE;&#x09A8;&#x09B8;&#x09AE;&#x09CD;&#x09AE;&#x09A4; &#x09B6;&#x09BF;&#x0995;&#x09CD;&#x09B7;&#x09BE; &#x09AA;&#x09BE;&#x0993;&#x09DF;&#x09BE;&#x09AA;&#x09BE;&#x09B6;&#x09BF; &#x0986;&#x09A6;&#x09B0;&#x09CD;&#x09B6; &#x09AE;&#x09BE;&#x09A8;&#x09C1;&#x09B7; &#x09B9;&#x09BF;&#x09B8;&#x09C7;&#x09AC;&#x09C7; &#x099B;&#x09BE;&#x09A4;&#x09CD;&#x09B0;-&#x099B;&#x09BE;&#x09A4;&#x09CD;&#x09B0;&#x09C0; &#x0997;&#x09DC;&#x09C7; &#x0986;&#x09AE;&#x09BE;&#x09A6;&#x09C7;&#x09B0; &#x09B2;&#x0995;&#x09CD;&#x09B7;&#x09CD;&#x09AF;"</div>
+            <div class="motto">"মানসম্মত শিক্ষার পাশাপাশি আদর্শ মানুষ হিসেবে ছাত্র-ছাত্রীদের গড়ে তোলাই আমাদের লক্ষ্য।</div>
             <div class="term-box">{{ strtoupper($examAssessmentClass->examAssessment->name) }}</div>
         </div>
         <table class="grade-box">

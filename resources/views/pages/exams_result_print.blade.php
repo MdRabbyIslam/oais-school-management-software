@@ -4,19 +4,31 @@
     <meta charset="UTF-8">
     <title>Result Print (Nursery - Class 2)</title>
     <style>
+        @font-face {
+            font-family: 'SutonnyMJWeb';
+            src: url('{{ asset('upload/fonts/SutonnyMJ-Regular.ttf') }}') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+
         @page { size: A4 portrait; margin: 7mm; }
         body { font-family: "Times New Roman", serif; color: #111; margin: 0; }
         .wrap { border: 1px solid #222; padding: 10px; }
         .actions { margin-bottom: 8px; }
         .actions button { padding: 6px 12px; }
         .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
-        .logo-wrap { width: 100px; text-align: center; }
-        .logo-wrap img { max-width: 88px; max-height: 88px; }
+        .logo-wrap { width: 140px; text-align: center; }
+        .logo-wrap img { max-width: 120px; max-height: 120px; }
         .title { flex: 1; text-align: center; }
-        .bismillah { font-size: 13px; margin-bottom: 2px; }
-        .school-bn { font-size: 34px; font-weight: 700; line-height: 1.1; }
+        .bismillah { font-size: 12px; margin-bottom: 4px; }
+        .school-bn {
+            font-family:  "SuttonyMJ", serif;
+            font-size: 34px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
         .school-en { font-size: 50px; font-weight: 700; line-height: 1.05; margin-top: 2px; }
-        .motto { font-size: 13px; margin-top: 4px; }
+        .motto { font-size: 12px; margin-top: 4px; }
         .term-box {
             display: inline-block;
             border: 1px solid #222;
@@ -26,7 +38,7 @@
             font-weight: 700;
             letter-spacing: 0.6px;
         }
-        .grade-box { width: 210px; border-collapse: collapse; }
+        .grade-box { width: 150px; border-collapse: collapse; }
         .grade-box th, .grade-box td { border: 1px solid #222; padding: 3px 6px; font-size: 12px; text-align: center; }
         .meta { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
         .meta td { border: 1px solid #222; padding: 5px 6px; font-size: 14px; min-height: 24px; }
@@ -62,10 +74,10 @@
                 <img src="{{ asset('upload/images/Logo__Oysis.png') }}" alt="School Logo">
             </div>
             <div class="title">
-                <div class="bismillah">&#x09AC;&#x09BF;&#x09B8;&#x09AE;&#x09BF;&#x09B2;&#x09CD;&#x09B2;&#x09BE;&#x09B9;&#x09BF;&#x09B0; &#x09B0;&#x09BE;&#x09B9;&#x09AE;&#x09BE;&#x09A8;&#x09BF;&#x09B0; &#x09B0;&#x09BE;&#x09B9;&#x09BF;&#x09AE;</div>
+                <div class="bismillah">বিসমিল্লাহির রহমানির রাহিম</div>
                 <div class="school-bn">ওয়েসিস মডেল স্কুল</div>
                 <div class="school-en">Oasis Model School</div>
-                <div class="motto">"মানসম্মত শিক্ষা পাশাপাশি আদর্শ মানুষ হিসেবে ছাত্র-ছাত্রী গড়ে আমাদের লক্ষ্য"</div>
+                <div class="motto">"মানসম্মত শিক্ষার পাশাপাশি আদর্শ মানুষ হিসেবে ছাত্র-ছাত্রীদের গড়ে তোলাই আমাদের লক্ষ্য।</div>
                 <div class="term-box">{{ strtoupper($examAssessmentClass->examAssessment->name) }}</div>
             </div>
             <table class="grade-box">
