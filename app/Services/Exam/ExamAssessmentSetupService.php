@@ -51,6 +51,8 @@ class ExamAssessmentSetupService
                         'grading_policy_id' => $policy->id,
                         'total_marks' => $policy->total_marks,
                         'pass_marks' => $policy->pass_marks,
+                        'exclude_from_final_gpa' => (bool) $policy->exclude_from_final_gpa,
+                        'is_fourth_subject_eligible' => (bool) $policy->is_fourth_subject_eligible,
                         'is_optional' => (bool) $policy->is_optional,
                         'weight' => $policy->weight ?? 1,
                     ]
@@ -101,6 +103,8 @@ class ExamAssessmentSetupService
                     'grading_policy_id' => $policy->id,
                     'total_marks' => $policy->total_marks,
                     'pass_marks' => $policy->pass_marks,
+                    'exclude_from_final_gpa' => (bool) $policy->exclude_from_final_gpa,
+                    'is_fourth_subject_eligible' => (bool) $policy->is_fourth_subject_eligible,
                     'is_optional' => (bool) $policy->is_optional,
                     'weight' => $policy->weight ?? 1,
                 ]

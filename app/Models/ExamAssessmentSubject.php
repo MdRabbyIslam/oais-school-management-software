@@ -23,6 +23,8 @@ class ExamAssessmentSubject extends Model
         'grading_policy_id',
         'total_marks',
         'pass_marks',
+        'exclude_from_final_gpa',
+        'is_fourth_subject_eligible',
         'is_optional',
         'weight',
     ];
@@ -30,6 +32,8 @@ class ExamAssessmentSubject extends Model
     protected $casts = [
         'total_marks' => 'decimal:2',
         'pass_marks' => 'decimal:2',
+        'exclude_from_final_gpa' => 'boolean',
+        'is_fourth_subject_eligible' => 'boolean',
         'is_optional' => 'boolean',
         // Stored as decimal to support fractional weighting (e.g., 0.50).
         'weight' => 'decimal:2',

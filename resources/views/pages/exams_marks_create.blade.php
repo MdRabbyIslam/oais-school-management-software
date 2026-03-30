@@ -86,6 +86,11 @@
             </form>
 
             @if($selectedSubject)
+                @if(($examAssessmentClass->examAssessment->result_calculation_mode ?? 'standard_weighted') === 'ssc_optional_subject' && ($selectedSubject->is_fourth_subject_eligible ?? false))
+                    <div class="alert alert-info">
+                        This subject is marked as a 4th-subject option. Only students who selected this subject in their enrollment settings are shown here.
+                    </div>
+                @endif
                 <form method="POST" action="{{ route('exam-assessment-classes.marks.store', $examAssessmentClass) }}">
                     @csrf
                     <input type="hidden" name="assessment_subject_id" value="{{ $selectedSubject->id }}">

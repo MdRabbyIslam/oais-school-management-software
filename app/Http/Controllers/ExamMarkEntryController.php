@@ -48,6 +48,11 @@ class ExamMarkEntryController extends Controller
                 ->where('class_id', $examAssessmentClass->class_id)
                 ->where('academic_year_id', $examAssessmentClass->examAssessment->academic_year_id)
                 ->where('status', 'active')
+                ->when(
+                    ($examAssessmentClass->examAssessment->result_calculation_mode ?? 'standard_weighted') === 'ssc_optional_subject'
+                        && (bool) ($selectedSubject->is_fourth_subject_eligible ?? false),
+                    fn ($query) => $query->where('optional_subject_id', $selectedSubject->subject_id)
+                )
                 ->orderByRaw('ISNULL(roll_number), roll_number ASC')
                 ->get();
 

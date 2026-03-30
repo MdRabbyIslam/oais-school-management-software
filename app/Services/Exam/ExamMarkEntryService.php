@@ -20,6 +20,11 @@ class ExamMarkEntryService
                 ->where('class_id', $assessmentClass->class_id)
                 ->where('academic_year_id', $assessmentClass->examAssessment->academic_year_id)
                 ->where('status', 'active')
+                ->when(
+                    ($assessmentClass->examAssessment->result_calculation_mode ?? 'standard_weighted') === 'ssc_optional_subject'
+                        && (bool) ($assessmentSubject->is_fourth_subject_eligible ?? false),
+                    fn ($query) => $query->where('optional_subject_id', $assessmentSubject->subject_id)
+                )
                 ->pluck('id')
                 ->map(fn ($id) => (int) $id)
                 ->all();
@@ -87,4 +92,3 @@ class ExamMarkEntryService
         });
     }
 }
-

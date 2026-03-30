@@ -64,7 +64,9 @@ class GradingPolicyController extends Controller
                 'total_marks' => $request->input('total_marks'),
                 'pass_marks' => $request->input('pass_marks'),
                 'grade_scheme_id' => (int) $request->input('grade_scheme_id'),
-                'is_optional' => (bool) $request->boolean('is_optional', false),
+                'exclude_from_final_gpa' => (bool) $request->boolean('exclude_from_final_gpa', false),
+                'is_fourth_subject_eligible' => (bool) $request->boolean('is_fourth_subject_eligible', false),
+                'is_optional' => (bool) $request->boolean('exclude_from_final_gpa', false),
                 'weight' => $request->input('weight', 1.00),
                 'is_active' => (bool) $request->boolean('is_active', true),
             ]);
@@ -99,7 +101,9 @@ class GradingPolicyController extends Controller
                 'total_marks' => $request->input('total_marks'),
                 'pass_marks' => $request->input('pass_marks'),
                 'grade_scheme_id' => (int) $request->input('grade_scheme_id'),
-                'is_optional' => (bool) $request->boolean('is_optional', false),
+                'exclude_from_final_gpa' => (bool) $request->boolean('exclude_from_final_gpa', false),
+                'is_fourth_subject_eligible' => (bool) $request->boolean('is_fourth_subject_eligible', false),
+                'is_optional' => (bool) $request->boolean('exclude_from_final_gpa', false),
                 'weight' => $request->input('weight', 1.00),
                 'is_active' => (bool) $request->boolean('is_active', true),
             ]);

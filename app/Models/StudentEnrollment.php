@@ -12,6 +12,7 @@ class StudentEnrollment extends Model
         'student_id',
         'academic_year_id',
         'class_id',
+        'optional_subject_id',
         'section_id',
         'roll_number',
         'enrollment_date',
@@ -40,6 +41,11 @@ class StudentEnrollment extends Model
     public function schoolClass()
     {
         return $this->belongsTo(SchoolClass::class, 'class_id');
+    }
+
+    public function optionalSubject()
+    {
+        return $this->belongsTo(Subject::class, 'optional_subject_id');
     }
 
     public function section()

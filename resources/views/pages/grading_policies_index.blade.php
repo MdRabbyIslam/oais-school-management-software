@@ -57,7 +57,8 @@
                         <th>Subject</th>
                         <th>Marks</th>
                         <th>Weight</th>
-                        <th>Optional</th>
+                        <th>Final GPA</th>
+                        <th>4th Subject</th>
                         <th>Components</th>
                         <th>Scheme</th>
                         <th>Status</th>
@@ -71,7 +72,8 @@
                             <td>{{ $policy->subject->name ?? 'Subject #' . $policy->subject_id }}</td>
                             <td>{{ $policy->pass_marks }}/{{ $policy->total_marks }}</td>
                             <td>{{ $policy->weight ?? '1.00' }}</td>
-                            <td>{{ $policy->is_optional ? 'Yes' : 'No' }}</td>
+                            <td>{{ ($policy->exclude_from_final_gpa ?? $policy->is_optional) ? 'Excluded' : 'Included' }}</td>
+                            <td>{{ ($policy->is_fourth_subject_eligible ?? false) ? 'Eligible' : 'No' }}</td>
                             <td>{{ $policy->components->count() ?: '-' }}</td>
                             <td>{{ $policy->gradeScheme->name ?? 'Scheme #' . $policy->grade_scheme_id }}</td>
                             <td>

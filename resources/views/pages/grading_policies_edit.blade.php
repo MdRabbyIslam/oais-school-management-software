@@ -82,10 +82,19 @@
                 </div>
                 <div class="form-group col-md-3 d-flex align-items-end">
                     <div class="form-check mb-2">
-                        <input type="checkbox" class="form-check-input" id="is_optional" name="is_optional" value="1" {{ old('is_optional', $gradingPolicy->is_optional) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="is_optional">Optional Subject</label>
+                        <input type="checkbox" class="form-check-input" id="exclude_from_final_gpa" name="exclude_from_final_gpa" value="1" {{ old('exclude_from_final_gpa', $gradingPolicy->exclude_from_final_gpa ?? $gradingPolicy->is_optional) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="exclude_from_final_gpa">Exclude From Final GPA</label>
                     </div>
                 </div>
+                <div class="form-group col-md-6 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" id="is_fourth_subject_eligible" name="is_fourth_subject_eligible" value="1" {{ old('is_fourth_subject_eligible', $gradingPolicy->is_fourth_subject_eligible ?? $gradingPolicy->is_optional) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_fourth_subject_eligible">Can Be Chosen As 4th Subject</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-text text-muted mb-3">
+                Exclude From Final GPA is for the standard weighted mode. Can Be Chosen As 4th Subject is for Bangladesh SSC/HSC style 4th-subject selection.
             </div>
 
             <hr>

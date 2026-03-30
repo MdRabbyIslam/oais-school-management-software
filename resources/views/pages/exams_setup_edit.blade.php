@@ -86,7 +86,8 @@
                         <th>Subject</th>
                         <th>Marks</th>
                         <th>Weight</th>
-                        <th>Optional</th>
+                        <th>Final GPA</th>
+                        <th>4th Subject</th>
                         <th>Policy</th>
                         <th>Components</th>
                         <th width="180">Action</th>
@@ -99,8 +100,13 @@
                             <td>{{ $assessmentSubject->pass_marks }}/{{ $assessmentSubject->total_marks }}</td>
                             <td>{{ $assessmentSubject->weight }}</td>
                             <td>
-                                <span class="badge {{ $assessmentSubject->is_optional ? 'badge-warning' : 'badge-secondary' }}">
-                                    {{ $assessmentSubject->is_optional ? 'YES' : 'NO' }}
+                                <span class="badge {{ ($assessmentSubject->exclude_from_final_gpa ?? $assessmentSubject->is_optional) ? 'badge-warning' : 'badge-secondary' }}">
+                                    {{ ($assessmentSubject->exclude_from_final_gpa ?? $assessmentSubject->is_optional) ? 'EXCLUDED' : 'INCLUDED' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {{ ($assessmentSubject->is_fourth_subject_eligible ?? false) ? 'badge-info' : 'badge-secondary' }}">
+                                    {{ ($assessmentSubject->is_fourth_subject_eligible ?? false) ? 'ELIGIBLE' : 'NO' }}
                                 </span>
                             </td>
                             <td>{{ $assessmentSubject->gradingPolicy->gradeScheme->name ?? 'Policy #' . $assessmentSubject->grading_policy_id }}</td>

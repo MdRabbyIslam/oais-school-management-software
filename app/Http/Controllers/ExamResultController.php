@@ -84,13 +84,13 @@ class ExamResultController extends Controller
             'assessmentSubjects.components',
             'assessmentSubjects.gradingPolicy.gradeScheme.items',
         ]);
-        $studentEnrollment->load('student');
+        $studentEnrollment->load(['student', 'optionalSubject']);
 
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
             ->where('student_enrollment_id', $studentEnrollment->id)
             ->firstOrFail();
 
-        $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment->id);
+        $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment);
 
         return view('pages.exams_result_show', compact('examAssessmentClass', 'studentEnrollment', 'result', 'subjectRows'));
     }
@@ -103,13 +103,13 @@ class ExamResultController extends Controller
         }
 
         $examAssessmentClass->load(['examAssessment', 'schoolClass', 'assessmentSubjects.subject', 'assessmentSubjects.components']);
-        $studentEnrollment->load('student');
+        $studentEnrollment->load(['student', 'optionalSubject']);
 
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
             ->where('student_enrollment_id', $studentEnrollment->id)
             ->firstOrFail();
 
-        $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment->id);
+        $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment);
 
         $pdf = Pdf::loadView('pages.exams_result_pdf', compact('examAssessmentClass', 'studentEnrollment', 'result', 'subjectRows'));
 
@@ -124,13 +124,13 @@ class ExamResultController extends Controller
         }
 
         $examAssessmentClass->load(['examAssessment', 'schoolClass', 'assessmentSubjects.subject', 'assessmentSubjects.components']);
-        $studentEnrollment->load('student');
+        $studentEnrollment->load(['student', 'optionalSubject']);
 
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
             ->where('student_enrollment_id', $studentEnrollment->id)
             ->firstOrFail();
 
-        $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment->id);
+        $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment);
         $extraMarks = $this->extraMarksByEnrollment($examAssessmentClass, collect([$studentEnrollment->id]))[$studentEnrollment->id] ?? [
             'homework_marks' => 0.0,
             'attendance_marks' => 0.0,
@@ -203,6 +203,7 @@ class ExamResultController extends Controller
             $hasRealComponents = count($componentColumns) > 0;
 
             return [
+                'assessment_subject' => $assessmentSubject,
                 'assessment_subject_id' => $assessmentSubject->id,
                 'subject_name' => $assessmentSubject->subject->name ?? ('Subject #' . $assessmentSubject->subject_id),
                 'subject_id' => (int) $assessmentSubject->subject_id,
@@ -223,6 +224,7 @@ class ExamResultController extends Controller
 
         $extraMarksByEnrollment = $this->extraMarksByEnrollment($examAssessmentClass, $enrollmentIds);
         $rows = $results->map(function ($result) use (
+            $examAssessmentClass,
             $subjectLayouts,
             $marksByKey,
             $gradeItemsByAssessmentSubject,
@@ -231,7 +233,19 @@ class ExamResultController extends Controller
         ) {
             $subjectData = [];
             $hasFailedMandatorySubject = false;
+            $calculationMode = $this->resultCalculationMode($examAssessmentClass);
             foreach ($subjectLayouts as $layout) {
+                $assessmentSubject = $layout['assessment_subject'] ?? null;
+                if ($assessmentSubject && !$this->isSubjectApplicableToEnrollment($assessmentSubject, $result->studentEnrollment, $calculationMode)) {
+                    $subjectData[$layout['assessment_subject_id']] = [
+                        'components' => array_fill(0, count($layout['component_columns']), null),
+                        'total' => null,
+                        'average' => null,
+                        'gpa' => null,
+                    ];
+                    continue;
+                }
+
                 $mark = $marksByKey->get($layout['assessment_subject_id'] . ':' . $result->student_enrollment_id);
                 $markComponents = $mark?->components?->keyBy('assessment_subject_component_id') ?? collect();
 
@@ -252,7 +266,11 @@ class ExamResultController extends Controller
                     (float) (($termObtained ?? 0) + $average)
                 );
                 $subjectPass = $this->isSubjectPassForClassPdf($layout, $mark, $markComponents, $finalObtained);
-                if (!$subjectPass) {
+                if (
+                    !$subjectPass
+                    && $assessmentSubject
+                    && $this->subjectCountsAsMandatory($assessmentSubject, $result->studentEnrollment, $calculationMode)
+                ) {
                     $hasFailedMandatorySubject = true;
                 }
 
@@ -341,6 +359,7 @@ class ExamResultController extends Controller
         });
 
         $rows = $this->buildClassPrintRows(
+            $examAssessmentClass,
             $results,
             $subjectLayouts,
             $marksByKey,
@@ -352,20 +371,25 @@ class ExamResultController extends Controller
         return view('pages.exams_results_full_print', compact('examAssessmentClass', 'subjectLayouts', 'rows'));
     }
 
-    private function buildSubjectRows(ExamAssessmentClass $assessmentClass, int $enrollmentId): array
+    private function buildSubjectRows(ExamAssessmentClass $assessmentClass, StudentEnrollment $studentEnrollment): array
     {
         $subjectRows = [];
+        $calculationMode = $this->resultCalculationMode($assessmentClass);
         foreach ($assessmentClass->assessmentSubjects as $assessmentSubject) {
+            if (!$this->isSubjectApplicableToEnrollment($assessmentSubject, $studentEnrollment, $calculationMode)) {
+                continue;
+            }
+
             $mark = $assessmentSubject->marks()
                 ->with('components.assessmentSubjectComponent')
-                ->where('student_enrollment_id', $enrollmentId)
+                ->where('student_enrollment_id', $studentEnrollment->id)
                 ->first();
 
             $termObtained = ($mark && !$mark->is_absent && $mark->marks_obtained !== null)
                 ? (float) $mark->marks_obtained
                 : null;
             $termGrade = $this->resolveTermGradeAndGpa($assessmentSubject, $termObtained);
-            $classTestAverage = $this->classTestAverageForSubject($assessmentClass, (int) $assessmentSubject->subject_id, $enrollmentId);
+            $classTestAverage = $this->classTestAverageForSubject($assessmentClass, (int) $assessmentSubject->subject_id, $studentEnrollment->id);
             $finalObtained = min((float) $assessmentSubject->total_marks, ((float) ($termObtained ?? 0)) + $classTestAverage);
 
             $subjectRows[] = [
@@ -454,6 +478,44 @@ class ExamResultController extends Controller
         return $status === 'published';
     }
 
+    private function resultCalculationMode(ExamAssessmentClass $assessmentClass): string
+    {
+        $mode = $assessmentClass->relationLoaded('examAssessment')
+            ? $assessmentClass->examAssessment->result_calculation_mode
+            : $assessmentClass->examAssessment()->value('result_calculation_mode');
+
+        return $mode ?: 'standard_weighted';
+    }
+
+    private function isSubjectApplicableToEnrollment($assessmentSubject, StudentEnrollment $studentEnrollment, string $calculationMode): bool
+    {
+        if ($calculationMode !== 'ssc_optional_subject') {
+            return true;
+        }
+
+        if (!(bool) ($assessmentSubject->is_fourth_subject_eligible ?? false)) {
+            return true;
+        }
+
+        return (int) ($studentEnrollment->optional_subject_id ?? 0) === (int) $assessmentSubject->subject_id;
+    }
+
+    private function subjectCountsAsMandatory($assessmentSubject, StudentEnrollment $studentEnrollment, string $calculationMode): bool
+    {
+        if ((bool) ($assessmentSubject->exclude_from_final_gpa ?? $assessmentSubject->is_optional ?? false)) {
+            return false;
+        }
+
+        if ($calculationMode !== 'ssc_optional_subject') {
+            return true;
+        }
+
+        return !(
+            (bool) ($assessmentSubject->is_fourth_subject_eligible ?? false)
+            && (int) ($studentEnrollment->optional_subject_id ?? 0) === (int) $assessmentSubject->subject_id
+        );
+    }
+
     private function isSkippedComponent(?string $componentName, ?string $componentCode): bool
     {
         $normalizedName = strtoupper(trim((string) $componentName));
@@ -532,6 +594,7 @@ class ExamResultController extends Controller
             })->all();
 
             return [
+                'assessment_subject' => $assessmentSubject,
                 'assessment_subject_id' => $assessmentSubject->id,
                 'subject_name' => $assessmentSubject->subject->name ?? ('Subject #' . $assessmentSubject->subject_id),
                 'subject_id' => (int) $assessmentSubject->subject_id,
@@ -545,6 +608,7 @@ class ExamResultController extends Controller
     }
 
     private function buildClassPrintRows(
+        ExamAssessmentClass $examAssessmentClass,
         $results,
         $subjectLayouts,
         $marksByKey,
@@ -554,6 +618,7 @@ class ExamResultController extends Controller
     )
     {
         return $results->map(function ($result) use (
+            $examAssessmentClass,
             $subjectLayouts,
             $marksByKey,
             $gradeItemsByAssessmentSubject,
@@ -562,8 +627,20 @@ class ExamResultController extends Controller
         ) {
             $subjectData = [];
             $hasFailedMandatorySubject = false;
+            $calculationMode = $this->resultCalculationMode($examAssessmentClass);
 
             foreach ($subjectLayouts as $layout) {
+                $assessmentSubject = $layout['assessment_subject'] ?? null;
+                if ($assessmentSubject && !$this->isSubjectApplicableToEnrollment($assessmentSubject, $result->studentEnrollment, $calculationMode)) {
+                    $subjectData[$layout['assessment_subject_id']] = [
+                        'components' => array_fill(0, count($layout['component_columns']), null),
+                        'total' => null,
+                        'average' => null,
+                        'gpa' => null,
+                    ];
+                    continue;
+                }
+
                 $mark = $marksByKey->get($layout['assessment_subject_id'] . ':' . $result->student_enrollment_id);
                 $markComponents = $mark?->components?->keyBy('assessment_subject_component_id') ?? collect();
 
@@ -584,7 +661,11 @@ class ExamResultController extends Controller
                     (float) (($termObtained ?? 0) + $average)
                 );
                 $subjectPass = $this->isSubjectPassForClassPdf($layout, $mark, $markComponents, $finalObtained);
-                if (!$subjectPass) {
+                if (
+                    !$subjectPass
+                    && $assessmentSubject
+                    && $this->subjectCountsAsMandatory($assessmentSubject, $result->studentEnrollment, $calculationMode)
+                ) {
                     $hasFailedMandatorySubject = true;
                 }
 

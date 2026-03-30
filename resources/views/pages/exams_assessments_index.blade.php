@@ -28,6 +28,7 @@
                         <th>Name</th>
                         <th>Academic Year</th>
                         <th>Term</th>
+                        <th>Calculation</th>
                         <th>Status</th>
                         <th>Classes</th>
                         <th width="320">Actions</th>
@@ -41,6 +42,7 @@
                             <td>{{ $assessment->name }}</td>
                             <td>{{ $assessment->academicYear->name ?? '-' }}</td>
                             <td>{{ $assessment->term->name ?? '-' }}</td>
+                            <td>{{ ($assessment->result_calculation_mode ?? 'standard_weighted') === 'ssc_optional_subject' ? 'SSC/HSC 4th Subject' : 'Standard Weighted' }}</td>
                             <td>
                                 <span class="badge
                                     {{ $assessment->status === 'published' ? 'badge-success' : ($assessment->status === 'locked' ? 'badge-dark' : 'badge-secondary') }}">

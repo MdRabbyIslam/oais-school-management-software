@@ -16,6 +16,7 @@ class ExamAssessment extends Model
         'start_date',
         'end_date',
         'status',
+        'result_calculation_mode',
         'created_by',
         'published_by',
         'published_at',

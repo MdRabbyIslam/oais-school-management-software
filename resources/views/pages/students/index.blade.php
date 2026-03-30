@@ -106,7 +106,7 @@
                             <td>{{ $student->activeEnrollment && $student->activeEnrollment->academicYear ? $student->activeEnrollment->academicYear->name : '-' }}</td>
                             <td>
                                   <a href="{{ route('students.edit', $student->id) }}" class="btn btn-sm btn-secondary">Edit</a>
-                                <a href="{{ route('enrollments.view', $student->id) }}" class="btn btn-sm btn-warning">Update Roll</a>
+                                <a href="{{ route('enrollments.view', $student->id) }}" class="btn btn-sm btn-warning">Enrollment Settings</a>
                                 <a href="{{ route('students.promote.create', $student->id) }}" class="btn btn-sm btn-primary">Promote</a>
                                 <form action="{{ route('students.destroy', $student->id) }}" method="POST" class="d-inline"
                                     onsubmit="return confirm('Are you sure to delete this student?');">

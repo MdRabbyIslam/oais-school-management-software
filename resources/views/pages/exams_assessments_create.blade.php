@@ -75,6 +75,19 @@
             </div>
 
             <div class="form-group">
+                <label for="result_calculation_mode">Result Calculation Method</label>
+                @php($selectedMode = old('result_calculation_mode', 'standard_weighted'))
+                <select name="result_calculation_mode" id="result_calculation_mode" class="form-control" required>
+                    <option value="standard_weighted" {{ $selectedMode === 'standard_weighted' ? 'selected' : '' }}>Standard Weighted</option>
+                    <option value="ssc_optional_subject" {{ $selectedMode === 'ssc_optional_subject' ? 'selected' : '' }}>Bangladesh SSC/HSC 4th Subject Rule</option>
+                </select>
+                <small class="form-text text-muted">
+                    Standard Weighted keeps weighted GPA behavior. Bangladesh SSC/HSC 4th Subject Rule uses one selected 4th subject that adds GPA bonus above 2.00 and does not affect pass/fail.
+                </small>
+                @error('result_calculation_mode') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="form-group">
                 <label>Target Classes</label>
                 <small class="form-text text-muted mb-2">
                     After creation, subject setup will be auto-initialized from class-subject mappings using active grading policies.

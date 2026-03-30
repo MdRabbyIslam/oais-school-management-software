@@ -112,9 +112,9 @@
                                 <td>{{ $cell['total'] === null ? '-' : rtrim(rtrim(number_format((float) $cell['total'], 2, '.', ''), '0'), '.') }}</td>
                             @endif
                             @if($subjectLayout['show_average_column'] ?? false)
-                                <td>{{ rtrim(rtrim(number_format((float) ($cell['average'] ?? 0), 2, '.', ''), '0'), '.') }}</td>
+                                <td>{{ $cell['average'] === null ? '-' : rtrim(rtrim(number_format((float) $cell['average'], 2, '.', ''), '0'), '.') }}</td>
                             @endif
-                            <td>{{ rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
+                            <td>{{ $cell['gpa'] === null ? '-' : rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
                         @endforeach
                         <td><strong>{{ rtrim(rtrim(number_format((float) ($row['homework_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ rtrim(rtrim(number_format((float) ($row['attendance_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GradingPolicy;
 use App\Models\Student;
 use App\Models\StudentEnrollment;
 
@@ -16,9 +17,17 @@ class StudentEnrollmentController extends Controller
     public function view(Student $student)
     {
         // Load enrollments with their relations for the specific student
-        $student->load(['enrollments.academicYear', 'enrollments.schoolClass', 'enrollments.section']);
+        $student->load(['enrollments.academicYear', 'enrollments.schoolClass', 'enrollments.section', 'enrollments.optionalSubject']);
 
-        return view('pages.enrollments.view', compact('student'));
+        $fourthSubjectsByClass = GradingPolicy::query()
+            ->with('subject')
+            ->where('is_active', true)
+            ->where('is_fourth_subject_eligible', true)
+            ->whereIn('class_id', $student->enrollments->pluck('class_id')->unique()->values())
+            ->get()
+            ->groupBy('class_id');
+
+        return view('pages.enrollments.view', compact('student', 'fourthSubjectsByClass'));
     }
 
     /**
@@ -30,6 +39,7 @@ class StudentEnrollmentController extends Controller
             'enrollments' => 'required|array',
             'enrollments.*.id' => 'required|exists:student_enrollments,id',
             'enrollments.*.roll_number' => 'required|string|max:50',
+            'enrollments.*.optional_subject_id' => 'nullable|exists:subjects,id',
             'selected_ids' => 'required|array|min:1'
         ], [
             'selected_ids.required' => 'Please select at least one enrollment row to update.',
@@ -57,8 +67,25 @@ class StudentEnrollmentController extends Controller
                         throw new \Exception("Roll number '{$data['roll_number']}' is already assigned to another student in {$enrollment->schoolClass->name} ({$enrollment->section->section_name}).");
                     }
 
+                    $optionalSubjectId = !empty($data['optional_subject_id']) ? (int) $data['optional_subject_id'] : null;
+                    if ($optionalSubjectId !== null) {
+                        $isAllowedFourthSubject = GradingPolicy::query()
+                            ->where('class_id', $enrollment->class_id)
+                            ->where('subject_id', $optionalSubjectId)
+                            ->where('is_active', true)
+                            ->where('is_fourth_subject_eligible', true)
+                            ->exists();
+
+                        if (!$isAllowedFourthSubject) {
+                            throw new \Exception('Selected 4th subject is not allowed for ' . $enrollment->schoolClass->name . '.');
+                        }
+                    }
+
                     // 3. Perform update
-                    $enrollment->update(['roll_number' => $data['roll_number']]);
+                    $enrollment->update([
+                        'roll_number' => $data['roll_number'],
+                        'optional_subject_id' => $optionalSubjectId,
+                    ]);
                 }
             }
 

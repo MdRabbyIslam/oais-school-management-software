@@ -48,6 +48,7 @@ class ExamResultService
                 ->keyBy(fn ($mark) => $mark->assessment_subject_id . ':' . $mark->student_enrollment_id);
 
             $classTestAverageMap = $this->buildClassTestAverageMap($assessmentClass, $subjects, $enrollments);
+            $calculationMode = (string) ($assessmentClass->examAssessment->result_calculation_mode ?? 'standard_weighted');
 
             $processed = 0;
             $skipped = 0;
@@ -58,12 +59,17 @@ class ExamResultService
                 $weightedGpaPoints = 0.0;
                 $weightedGpaBase = 0.0;
                 $failedMandatory = 0;
+                $optionalBonusPoints = 0.0;
 
                 foreach ($subjects as $subjectSetup) {
+                    $role = $this->resolveSubjectRole($subjectSetup, $enrollment, $calculationMode);
+                    if (!$role['counts_in_totals']) {
+                        continue;
+                    }
+
                     $weight = (float) $subjectSetup->weight;
                     $totalMarks = (float) $subjectSetup->total_marks;
                     $passMarks = (float) $subjectSetup->pass_marks;
-                    $isOptional = (bool) $subjectSetup->is_optional;
 
                     $markKey = $subjectSetup->id . ':' . $enrollment->id;
                     $mark = $markMap->get($markKey);
@@ -86,13 +92,22 @@ class ExamResultService
                     $weightedObtained += $obtained * $weight;
                     $weightedTotal += $totalMarks * $weight;
 
-                    if (!$isOptional) {
-                        $weightedGpaPoints += $subjectGpa * $weight;
-                        $weightedGpaBase += $weight;
+                    if ($role['counts_in_gpa']) {
+                        if ($calculationMode === 'ssc_optional_subject') {
+                            $weightedGpaPoints += $subjectGpa;
+                            $weightedGpaBase += 1;
+                        } else {
+                            $weightedGpaPoints += $subjectGpa * $weight;
+                            $weightedGpaBase += $weight;
+                        }
 
-                        if (!$subjectPassed) {
+                        if ($role['counts_in_pass_fail'] && !$subjectPassed) {
                             $failedMandatory++;
                         }
+                    }
+
+                    if ($role['counts_as_optional_bonus']) {
+                        $optionalBonusPoints += max(0, $subjectGpa - 2.0);
                     }
                 }
 
@@ -103,7 +118,13 @@ class ExamResultService
 
                 $percentage = ($weightedObtained / $weightedTotal) * 100;
                 $isPass = $failedMandatory === 0;
-                $gpa = $isPass && $weightedGpaBase > 0 ? ($weightedGpaPoints / $weightedGpaBase) : 0;
+                $gpa = 0.0;
+                if ($isPass && $weightedGpaBase > 0) {
+                    $gpa = $weightedGpaPoints / $weightedGpaBase;
+                    if ($calculationMode === 'ssc_optional_subject') {
+                        $gpa += $optionalBonusPoints / $weightedGpaBase;
+                    }
+                }
                 $finalGrade = $isPass ? $this->gradeFromGpa($gpa) : 'F';
 
                 ExamStudentResult::updateOrCreate(
@@ -264,5 +285,49 @@ class ExamResultService
 
         return true;
     }
-}
 
+    private function resolveSubjectRole($subjectSetup, StudentEnrollment $enrollment, string $calculationMode): array
+    {
+        $excludeFromFinalGpa = (bool) ($subjectSetup->exclude_from_final_gpa ?? $subjectSetup->is_optional ?? false);
+        $isFourthSubjectEligible = (bool) ($subjectSetup->is_fourth_subject_eligible ?? false);
+        $isSelectedFourthSubject = $calculationMode === 'ssc_optional_subject'
+            && $isFourthSubjectEligible
+            && (int) ($enrollment->optional_subject_id ?? 0) === (int) $subjectSetup->subject_id;
+
+        if ($calculationMode === 'ssc_optional_subject') {
+            if ($isSelectedFourthSubject) {
+                return [
+                    'counts_in_totals' => true,
+                    'counts_in_gpa' => false,
+                    'counts_in_pass_fail' => false,
+                    'counts_as_optional_bonus' => true,
+                ];
+            }
+
+            if ($isFourthSubjectEligible) {
+                return [
+                    'counts_in_totals' => false,
+                    'counts_in_gpa' => false,
+                    'counts_in_pass_fail' => false,
+                    'counts_as_optional_bonus' => false,
+                ];
+            }
+        }
+
+        if ($excludeFromFinalGpa) {
+            return [
+                'counts_in_totals' => true,
+                'counts_in_gpa' => false,
+                'counts_in_pass_fail' => false,
+                'counts_as_optional_bonus' => false,
+            ];
+        }
+
+        return [
+            'counts_in_totals' => true,
+            'counts_in_gpa' => true,
+            'counts_in_pass_fail' => true,
+            'counts_as_optional_bonus' => false,
+        ];
+    }
+}

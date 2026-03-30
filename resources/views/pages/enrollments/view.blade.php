@@ -36,7 +36,7 @@
             <div class="card-header bg-dark d-flex justify-content-between align-items-center">
                 <h3 class="card-title text-white">Enrollment History for {{ $student->full_name }}</h3>
                 <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-save mr-1"></i> Update Selected Roll Numbers
+                    <i class="fas fa-save mr-1"></i> Save Selected Enrollment Settings
                 </button>
             </div>
 
@@ -51,6 +51,7 @@
                                 <th>Academic Year</th>
                                 <th>Class & Section</th>
                                 <th>Roll Number</th>
+                                <th>4th Subject</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -74,6 +75,35 @@
                                            value="{{ old("enrollments.$index.roll_number", $enrollment->roll_number) }}"
                                            class="form-control form-control-sm @error("enrollments.$index.roll_number") is-invalid @enderror">
                                     @error("enrollments.$index.roll_number")
+                                        <span class="text-danger small">{{ $message }}</span>
+                                    @enderror
+                                </td>
+                                <td>
+                                    @php($fourthSubjectOptions = $fourthSubjectsByClass[$enrollment->class_id] ?? collect())
+                                    <select
+                                        name="enrollments[{{ $index }}][optional_subject_id]"
+                                        class="form-control form-control-sm @error("enrollments.$index.optional_subject_id") is-invalid @enderror"
+                                    >
+                                        <option value="">None</option>
+                                        @foreach($fourthSubjectOptions as $policy)
+                                            <option
+                                                value="{{ $policy->subject_id }}"
+                                                {{ (string) old("enrollments.$index.optional_subject_id", $enrollment->optional_subject_id) === (string) $policy->subject_id ? 'selected' : '' }}
+                                            >
+                                                {{ $policy->subject->name ?? ('Subject #' . $policy->subject_id) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if($fourthSubjectOptions->isEmpty())
+                                        <small class="text-muted d-block mt-1">
+                                            No 4th-subject options available yet. Set up a grading policy for this class and enable "Can Be Chosen As 4th Subject" first.
+                                        </small>
+                                    @else
+                                        <small class="text-muted d-block mt-1">
+                                            Only subjects enabled in grading policy as "Can Be Chosen As 4th Subject" appear here.
+                                        </small>
+                                    @endif
+                                    @error("enrollments.$index.optional_subject_id")
                                         <span class="text-danger small">{{ $message }}</span>
                                     @enderror
                                 </td>

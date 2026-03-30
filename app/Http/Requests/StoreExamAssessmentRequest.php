@@ -21,6 +21,7 @@ class StoreExamAssessmentRequest extends FormRequest
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['required', 'in:draft,published,locked'],
+            'result_calculation_mode' => ['required', 'in:standard_weighted,ssc_optional_subject'],
             'class_ids' => ['required', 'array', 'min:1'],
             'class_ids.*' => ['integer', 'exists:classes,id'],
         ];

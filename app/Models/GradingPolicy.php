@@ -15,6 +15,8 @@ class GradingPolicy extends Model
         'total_marks',
         'pass_marks',
         'grade_scheme_id',
+        'exclude_from_final_gpa',
+        'is_fourth_subject_eligible',
         'is_optional',
         'weight',
         'is_active',
@@ -24,6 +26,8 @@ class GradingPolicy extends Model
         'total_marks' => 'decimal:2',
         'pass_marks' => 'decimal:2',
         'weight' => 'decimal:2',
+        'exclude_from_final_gpa' => 'boolean',
+        'is_fourth_subject_eligible' => 'boolean',
         'is_optional' => 'boolean',
         'is_active' => 'boolean',
     ];
