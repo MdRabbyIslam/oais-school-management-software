@@ -11,6 +11,8 @@ use App\Models\StudentTermExtraMark;
 use App\Models\StudentEnrollment;
 use App\Services\Exam\ExamResultService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ExamResultController extends Controller
 {
@@ -54,6 +56,7 @@ class ExamResultController extends Controller
             ->where('assessment_class_id', $examAssessmentClass->id)
             ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->paginate(50);
+        $this->applyEffectivePositions($results->getCollection(), $this->effectivePositionMap($examAssessmentClass->id));
         $extraMarksByEnrollment = $this->extraMarksByEnrollment(
             $examAssessmentClass,
             $results->getCollection()->pluck('student_enrollment_id')->values()
@@ -68,6 +71,51 @@ class ExamResultController extends Controller
             'extraMarksByEnrollment',
             'draftClassTestsCount'
         ));
+    }
+
+    public function updatePositionOverride(Request $request, ExamAssessmentClass $examAssessmentClass, StudentEnrollment $studentEnrollment)
+    {
+        $this->authorize('manage-exams');
+        if (!$this->isResultOperationAllowed($examAssessmentClass)) {
+            return back()->with('error', 'Position override is available only when assessment status is Published.');
+        }
+
+        $result = ExamStudentResult::query()
+            ->where('assessment_class_id', $examAssessmentClass->id)
+            ->where('student_enrollment_id', $studentEnrollment->id)
+            ->firstOrFail();
+
+        if ($request->boolean('clear_manual_position')) {
+            $result->update(['manual_position' => null]);
+
+            return redirect()
+                ->route('exam-assessment-classes.results.index', $examAssessmentClass)
+                ->with('success', 'Manual position override cleared.');
+        }
+
+        $maxPosition = (int) ExamStudentResult::query()
+            ->where('assessment_class_id', $examAssessmentClass->id)
+            ->count();
+
+        $validated = $request->validate([
+            'manual_position' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:' . max(1, $maxPosition),
+                Rule::unique('exam_student_results', 'manual_position')
+                    ->where(fn ($query) => $query->where('assessment_class_id', $examAssessmentClass->id))
+                    ->ignore($result->id),
+            ],
+        ]);
+
+        $result->update([
+            'manual_position' => (int) $validated['manual_position'],
+        ]);
+
+        return redirect()
+            ->route('exam-assessment-classes.results.index', $examAssessmentClass)
+            ->with('success', 'Manual position override saved.');
     }
 
     public function show(ExamAssessmentClass $examAssessmentClass, StudentEnrollment $studentEnrollment)
@@ -89,6 +137,7 @@ class ExamResultController extends Controller
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
             ->where('student_enrollment_id', $studentEnrollment->id)
             ->firstOrFail();
+        $this->applyEffectivePosition($result, $this->effectivePositionMap($examAssessmentClass->id));
 
         $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment);
 
@@ -108,6 +157,7 @@ class ExamResultController extends Controller
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
             ->where('student_enrollment_id', $studentEnrollment->id)
             ->firstOrFail();
+        $this->applyEffectivePosition($result, $this->effectivePositionMap($examAssessmentClass->id));
 
         $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment);
 
@@ -129,6 +179,7 @@ class ExamResultController extends Controller
         $result = ExamStudentResult::where('assessment_class_id', $examAssessmentClass->id)
             ->where('student_enrollment_id', $studentEnrollment->id)
             ->firstOrFail();
+        $this->applyEffectivePosition($result, $this->effectivePositionMap($examAssessmentClass->id));
 
         $subjectRows = $this->buildSubjectRows($examAssessmentClass, $studentEnrollment);
         $extraMarks = $this->extraMarksByEnrollment($examAssessmentClass, collect([$studentEnrollment->id]))[$studentEnrollment->id] ?? [
@@ -168,6 +219,7 @@ class ExamResultController extends Controller
             ->where('assessment_class_id', $examAssessmentClass->id)
             ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->get();
+        $this->applyEffectivePositions($results, $this->effectivePositionMap($examAssessmentClass->id));
 
         $assessmentSubjects = $examAssessmentClass->assessmentSubjects()
             ->with(['subject', 'components', 'gradingPolicy.gradeScheme.items'])
@@ -301,7 +353,7 @@ class ExamResultController extends Controller
                 'attendance_marks' => $attendanceMarks,
                 'total' => (float) $result->total_obtained + $homeworkMarks + $attendanceMarks,
                 'gpa' => $hasFailedMandatorySubject ? 0.0 : (float) $result->gpa,
-                'position' => $result->position ?? '-',
+                'position' => $result->effective_position ?? '-',
             ];
         })->values();
 
@@ -330,6 +382,7 @@ class ExamResultController extends Controller
             ->where('assessment_class_id', $examAssessmentClass->id)
             ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->get();
+        $this->applyEffectivePositions($results, $this->effectivePositionMap($examAssessmentClass->id));
 
         $assessmentSubjects = $examAssessmentClass->assessmentSubjects()
             ->with(['subject', 'components', 'gradingPolicy.gradeScheme.items'])
@@ -695,9 +748,69 @@ class ExamResultController extends Controller
                 'attendance_marks' => $attendanceMarks,
                 'total' => (float) $result->total_obtained + $homeworkMarks + $attendanceMarks,
                 'gpa' => $hasFailedMandatorySubject ? 0.0 : (float) $result->gpa,
-                'position' => $result->position ?? '-',
+                'position' => $result->effective_position ?? '-',
             ];
         })->values();
+    }
+
+    private function effectivePositionMap(int $assessmentClassId): array
+    {
+        $results = ExamStudentResult::query()
+            ->where('assessment_class_id', $assessmentClassId)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get(['id', 'position', 'manual_position']);
+
+        $totalResults = $results->count();
+        if ($totalResults === 0) {
+            return [];
+        }
+
+        $manualResults = $results
+            ->filter(fn (ExamStudentResult $result) => $result->manual_position !== null
+                && $result->manual_position >= 1
+                && $result->manual_position <= $totalResults)
+            ->sortBy(fn (ExamStudentResult $result) => sprintf(
+                '%08d-%08d',
+                (int) $result->manual_position,
+                (int) $result->id
+            ))
+            ->values();
+
+        $manualByPosition = $manualResults->keyBy(fn (ExamStudentResult $result) => (int) $result->manual_position);
+        $manualIds = $manualResults->pluck('id')->all();
+        $autoQueue = $results
+            ->reject(fn (ExamStudentResult $result) => in_array($result->id, $manualIds, true))
+            ->values();
+
+        $map = [];
+        for ($position = 1; $position <= $totalResults; $position++) {
+            $manualResult = $manualByPosition->get($position);
+            if ($manualResult) {
+                $map[$manualResult->id] = $position;
+                continue;
+            }
+
+            $autoResult = $autoQueue->shift();
+            if ($autoResult) {
+                $map[$autoResult->id] = $position;
+            }
+        }
+
+        return $map;
+    }
+
+    private function applyEffectivePositions($results, array $effectivePositionMap): void
+    {
+        foreach ($results as $result) {
+            $this->applyEffectivePosition($result, $effectivePositionMap);
+        }
+    }
+
+    private function applyEffectivePosition(ExamStudentResult $result, array $effectivePositionMap): void
+    {
+        $result->setAttribute('effective_position', $effectivePositionMap[$result->id] ?? $result->position);
+        $result->setAttribute('position_is_overridden', $result->manual_position !== null);
     }
 
     private function extraMarksByEnrollment(ExamAssessmentClass $assessmentClass, $enrollmentIds): array

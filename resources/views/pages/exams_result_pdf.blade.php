@@ -32,6 +32,14 @@
             <td><strong>GPA:</strong> {{ $result->gpa }}</td>
             <td><strong>Grade:</strong> {{ $result->final_grade }} ({{ $result->is_pass ? 'PASS' : 'FAIL' }})</td>
         </tr>
+        <tr>
+            <td><strong>Position:</strong> {{ $result->effective_position ?? ($result->position ?? '-') }}</td>
+            <td>
+                @if($result->manual_position !== null)
+                    <strong>Rank Source:</strong> Manual Override
+                @endif
+            </td>
+        </tr>
     </table>
 
     <table>

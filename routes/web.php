@@ -372,6 +372,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('exam-assessment-classes.results.publish');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results', [ExamResultController::class, 'index'])
             ->name('exam-assessment-classes.results.index');
+        Route::patch('exam-assessment-classes/{examAssessmentClass}/results/{studentEnrollment}/position-override', [ExamResultController::class, 'updatePositionOverride'])
+            ->name('exam-assessment-classes.results.update-position-override');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results/print', [ExamResultController::class, 'printClass'])
             ->name('exam-assessment-classes.results.print-class');
         Route::get('exam-assessment-classes/{examAssessmentClass}/results/download-full-pdf', [ExamResultController::class, 'downloadClassPdf'])

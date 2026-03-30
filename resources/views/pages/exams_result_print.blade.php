@@ -153,7 +153,7 @@
                 <td><strong>উপস্থিতিঃ</strong> <span class="line"></span></td>
                 <td><strong>অনুপস্থিতিঃ</strong> <span class="line"></span></td>
                 <td><strong>G.P.A:</strong> {{ number_format((float) $result->gpa, 2) }}</td>
-                <td><strong>স্থানঃ</strong> <span class="line" style="min-width:80px;"></span></td>
+                <td><strong>স্থানঃ</strong> {{ $result->effective_position ?? ($result->position ?? '-') }}</td>
             </tr>
         </table>
 

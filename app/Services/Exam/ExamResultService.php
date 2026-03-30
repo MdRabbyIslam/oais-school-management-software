@@ -246,9 +246,12 @@ class ExamResultService
     private function applyPosition(int $assessmentClassId): void
     {
         $results = ExamStudentResult::query()
+            ->select('exam_student_results.*')
+            ->join('student_enrollments', 'student_enrollments.id', '=', 'exam_student_results.student_enrollment_id')
             ->where('assessment_class_id', $assessmentClassId)
-            ->orderByDesc('percentage')
+            ->orderByDesc('gpa')
             ->orderByDesc('total_obtained')
+            ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
             ->get();
 
         $position = 0;

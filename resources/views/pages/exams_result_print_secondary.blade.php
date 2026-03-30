@@ -155,7 +155,7 @@
             <td><strong>Total Working Days:</strong> <span class="line"></span></td>
             <td><strong>Present:</strong> <span class="line"></span></td>
             <td><strong>Absent:</strong> <span class="line"></span></td>
-            <td><strong>Position:</strong> <span class="line"></span></td>
+            <td><strong>Position:</strong> {{ $result->effective_position ?? ($result->position ?? '-') }}</td>
         </tr>
     </table>        <table class="manual evaluation">
             <thead>
@@ -204,4 +204,3 @@
 </div>
 </body>
 </html>
-

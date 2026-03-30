@@ -20,6 +20,7 @@ class ExamStudentResult extends Model
         'failed_subject_count',
         'is_pass',
         'position',
+        'manual_position',
         'calculated_at',
     ];
 
@@ -31,6 +32,7 @@ class ExamStudentResult extends Model
         'failed_subject_count' => 'integer',
         'is_pass' => 'boolean',
         'position' => 'integer',
+        'manual_position' => 'integer',
         'calculated_at' => 'datetime',
     ];
 
@@ -44,4 +46,3 @@ class ExamStudentResult extends Model
         return $this->belongsTo(StudentEnrollment::class);
     }
 }
-

@@ -22,6 +22,14 @@
             <div class="col-md-2"><strong>GPA:</strong> {{ $result->gpa }}</div>
             <div class="col-md-2"><strong>Grade:</strong> {{ $result->final_grade }}</div>
         </div>
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <strong>Position:</strong> {{ $result->effective_position ?? ($result->position ?? '-') }}
+                @if($result->manual_position !== null)
+                    <span class="badge badge-warning ml-1">Manual Override</span>
+                @endif
+            </div>
+        </div>
 
         <div class="table-responsive">
             <table class="table table-bordered table-sm">

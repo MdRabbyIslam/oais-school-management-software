@@ -55,6 +55,9 @@
         @if(session('error'))
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
+        @if($errors->any())
+            <div class="alert alert-danger">{{ $errors->first() }}</div>
+        @endif
         @if($assessmentStatus !== 'published')
             <div class="alert alert-info mb-3">
                 This assessment is <strong>{{ strtoupper($assessmentStatus) }}</strong>. Set status to <strong>Published</strong> to enable result publishing and PDF download.
@@ -72,6 +75,7 @@
                 <thead>
                     <tr>
                         <th>Position</th>
+                        <th>Manual Override</th>
                         <th>Roll</th>
                         <th>Student</th>
                         <th>HW</th>
@@ -91,7 +95,36 @@
                         @php($attendanceMarks = (float) ($extraMarks['attendance_marks'] ?? 0))
                         @php($displayTotal = (float) $row->total_obtained + $homeworkMarks + $attendanceMarks)
                         <tr>
-                            <td>{{ $row->position ?? '-' }}</td>
+                            <td>
+                                {{ $row->effective_position ?? ($row->position ?? '-') }}
+                                @if($row->manual_position !== null)
+                                    <span class="badge badge-warning ml-1">Manual</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($assessmentStatus === 'published')
+                                    <form method="POST" action="{{ route('exam-assessment-classes.results.update-position-override', [$examAssessmentClass, $row->studentEnrollment]) }}" class="form-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input
+                                            type="number"
+                                            name="manual_position"
+                                            class="form-control form-control-sm mr-1"
+                                            style="width: 80px;"
+                                            min="1"
+                                            max="{{ $results->total() }}"
+                                            value="{{ $row->manual_position ?? '' }}"
+                                            placeholder="Auto"
+                                        >
+                                        <button type="submit" class="btn btn-sm btn-outline-primary mr-1">Save</button>
+                                        @if($row->manual_position !== null)
+                                            <button type="submit" name="clear_manual_position" value="1" class="btn btn-sm btn-outline-secondary">Clear</button>
+                                        @endif
+                                    </form>
+                                @else
+                                    <span class="text-muted">Unavailable</span>
+                                @endif
+                            </td>
                             <td>{{ $row->studentEnrollment->roll_number ?? '-' }}</td>
                             <td>{{ $row->studentEnrollment->student->name ?? 'Student #' . $row->student_enrollment_id }}</td>
                             <td>{{ rtrim(rtrim(number_format($homeworkMarks, 2, '.', ''), '0'), '.') }}</td>
@@ -116,7 +149,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="11" class="text-center">No results found. Publish results first.</td></tr>
+                        <tr><td colspan="12" class="text-center">No results found. Publish results first.</td></tr>
                     @endforelse
                 </tbody>
             </table>
