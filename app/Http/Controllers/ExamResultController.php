@@ -426,12 +426,15 @@ class ExamResultController extends Controller
 
     private function buildSubjectRows(ExamAssessmentClass $assessmentClass, StudentEnrollment $studentEnrollment): array
     {
-        $subjectRows = [];
+        $compulsorySubjectRows = [];
+        $optionalSubjectRows = [];
         $calculationMode = $this->resultCalculationMode($assessmentClass);
         foreach ($assessmentClass->assessmentSubjects as $assessmentSubject) {
             if (!$this->isSubjectApplicableToEnrollment($assessmentSubject, $studentEnrollment, $calculationMode)) {
                 continue;
             }
+
+            $subjectDisplayMeta = $this->subjectDisplayMeta($assessmentSubject, $studentEnrollment, $calculationMode);
 
             $mark = $assessmentSubject->marks()
                 ->with('components.assessmentSubjectComponent')
@@ -445,9 +448,12 @@ class ExamResultController extends Controller
             $classTestAverage = $this->classTestAverageForSubject($assessmentClass, (int) $assessmentSubject->subject_id, $studentEnrollment->id);
             $finalObtained = min((float) $assessmentSubject->total_marks, ((float) ($termObtained ?? 0)) + $classTestAverage);
 
-            $subjectRows[] = [
+            $row = [
                 'subject_id' => (int) $assessmentSubject->subject_id,
-                'subject' => $assessmentSubject->subject->name ?? "Subject #{$assessmentSubject->subject_id}",
+                'subject' => trim(implode(' ', array_filter([
+                    $assessmentSubject->subject->name ?? "Subject #{$assessmentSubject->subject_id}",
+                    $subjectDisplayMeta['label'],
+                ]))),
                 'total_marks' => $assessmentSubject->total_marks,
                 'pass_marks' => $assessmentSubject->pass_marks,
                 'term_obtained_marks' => $mark?->marks_obtained,
@@ -479,9 +485,15 @@ class ExamResultController extends Controller
                     $finalObtained
                 ),
             ];
+
+            if ($subjectDisplayMeta['show_below_compulsory']) {
+                $optionalSubjectRows[] = $row;
+            } else {
+                $compulsorySubjectRows[] = $row;
+            }
         }
 
-        return $subjectRows;
+        return array_merge($compulsorySubjectRows, $optionalSubjectRows);
     }
 
     private function resolveTermGradeAndGpa($assessmentSubject, ?float $termObtained): array
@@ -505,6 +517,32 @@ class ExamResultController extends Controller
         return [
             'grade' => (string) ($matched->letter_grade ?? ''),
             'gpa' => (float) ($matched->gpa ?? 0.0),
+        ];
+    }
+
+    private function subjectDisplayMeta($assessmentSubject, StudentEnrollment $studentEnrollment, string $calculationMode): array
+    {
+        $isSelectedFourthSubject = $calculationMode === 'ssc_optional_subject'
+            && (bool) ($assessmentSubject->is_fourth_subject_eligible ?? false)
+            && (int) ($studentEnrollment->optional_subject_id ?? 0) === (int) $assessmentSubject->subject_id;
+
+        if ($isSelectedFourthSubject) {
+            return [
+                'label' => '(4th)',
+                'show_below_compulsory' => true,
+            ];
+        }
+
+        if ((bool) ($assessmentSubject->exclude_from_final_gpa ?? $assessmentSubject->is_optional ?? false)) {
+            return [
+                'label' => '(optional)',
+                'show_below_compulsory' => true,
+            ];
+        }
+
+        return [
+            'label' => null,
+            'show_below_compulsory' => false,
         ];
     }
 
