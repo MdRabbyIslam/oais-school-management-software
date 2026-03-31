@@ -17,7 +17,8 @@
             </div>
             <div class="form-group">
                 <label for="class_level">Class Level</label>
-                <input type="number" name="class_level" class="form-control" value="{{ old('class_level') }}" required>
+                <input type="number" name="class_level" class="form-control" value="{{ old('class_level') }}" min="-1" required>
+                <small class="form-text text-muted">Use `-1` for Nursery, `0` for KG, then `1`, `2`, `3`...</small>
                 @error('class_level') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
             <button type="submit" class="btn btn-success">Create</button>

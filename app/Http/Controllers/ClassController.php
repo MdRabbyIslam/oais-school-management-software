@@ -36,7 +36,7 @@ class ClassController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'class_level' => 'required|integer|min:1',
+            'class_level' => 'required|integer|min:-1',
         ]);
 
         SchoolClass::create($request->only('name', 'class_level'));
@@ -62,7 +62,7 @@ class ClassController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'class_level' => 'required|integer|min:1',
+            'class_level' => 'required|integer|min:-1',
         ]);
 
         $class->update($request->only('name', 'class_level'));
