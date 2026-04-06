@@ -17,7 +17,8 @@ class Subject extends Model
 
     public function classes()
     {
-        return $this->belongsToMany(SchoolClass::class, 'class_subject', 'subject_id', 'class_id');
+        return $this->belongsToMany(SchoolClass::class, 'class_subject', 'subject_id', 'class_id')
+            ->withPivot('sort_order');
     }
 
     public function assignments()

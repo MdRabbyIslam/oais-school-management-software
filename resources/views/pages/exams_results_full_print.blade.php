@@ -69,9 +69,11 @@
                             {{ $subjectLayout['subject_name'] }} {{ rtrim(rtrim((string) $subjectLayout['total_marks'], '0'), '.') }}
                         </th>
                     @endforeach
+                    <th class="final-col vertical-heading" rowspan="2">Exam</th>
+                    <th class="final-col vertical-heading" rowspan="2">Class Test</th>
                     <th class="final-col vertical-heading" rowspan="2">H. Work</th>
                     <th class="final-col vertical-heading" rowspan="2">Atten.</th>
-                    <th class="final-col vertical-heading" rowspan="2">Total</th>
+                    <th class="final-col vertical-heading" rowspan="2">Grand Total</th>
                     <th class="final-col vertical-heading" rowspan="2">GPA</th>
                     <th class="final-col vertical-heading" rowspan="2">Position</th>
                 </tr>
@@ -88,7 +90,7 @@
                             <th class="small-col tiny">T</th>
                         @endif
                         @if($subjectLayout['show_average_column'] ?? false)
-                            <th class="small-col tiny">AV</th>
+                            <th class="small-col tiny">CT</th>
                         @endif
                         <th class="small-col tiny">G.P</th>
                     @endforeach
@@ -116,9 +118,11 @@
                             @endif
                             <td>{{ $cell['gpa'] === null ? '-' : rtrim(rtrim(number_format((float) $cell['gpa'], 2, '.', ''), '0'), '.') }}</td>
                         @endforeach
+                        <td><strong>{{ rtrim(rtrim(number_format((float) ($row['exam_total'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
+                        <td><strong>{{ rtrim(rtrim(number_format((float) ($row['class_test_total'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ rtrim(rtrim(number_format((float) ($row['homework_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ rtrim(rtrim(number_format((float) ($row['attendance_marks'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
-                        <td><strong>{{ rtrim(rtrim(number_format((float) $row['total'], 2, '.', ''), '0'), '.') }}</strong></td>
+                        <td><strong>{{ rtrim(rtrim(number_format((float) ($row['grand_total'] ?? 0), 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ rtrim(rtrim(number_format((float) $row['gpa'], 2, '.', ''), '0'), '.') }}</strong></td>
                         <td><strong>{{ $row['position'] }}</strong></td>
                     </tr>

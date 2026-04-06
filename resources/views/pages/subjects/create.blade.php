@@ -27,6 +27,7 @@
 
             <div class="form-group">
                 <label>Assign to Classes</label>
+                <p class="text-muted mb-2">Choose the classes where this subject appears. You can arrange subject order later from the subject list by selecting a class.</p>
                 <div class="mb-2">
                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllClasses()">Select All</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllClasses()">Deselect All</button>

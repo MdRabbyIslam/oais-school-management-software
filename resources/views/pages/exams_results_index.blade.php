@@ -78,9 +78,11 @@
                         <th>Manual Override</th>
                         <th>Roll</th>
                         <th>Student</th>
+                        <th>Total (Exam)</th>
+                        <th>Total (Class Test)</th>
                         <th>HW</th>
                         <th>Attend.</th>
-                        <th>Total</th>
+                        <th>Grand Total</th>
                         <th>%</th>
                         <th>GPA</th>
                         <th>Grade</th>
@@ -91,9 +93,9 @@
                 <tbody>
                     @forelse($results as $row)
                         @php($extraMarks = $extraMarksByEnrollment[$row->student_enrollment_id] ?? ['homework_marks' => 0, 'attendance_marks' => 0])
+                        @php($splitTotals = $splitTotalsByEnrollment[$row->student_enrollment_id] ?? ['exam_total' => 0, 'class_test_total' => 0, 'grand_total' => 0])
                         @php($homeworkMarks = (float) ($extraMarks['homework_marks'] ?? 0))
                         @php($attendanceMarks = (float) ($extraMarks['attendance_marks'] ?? 0))
-                        @php($displayTotal = (float) $row->total_obtained + $homeworkMarks + $attendanceMarks)
                         <tr>
                             <td>
                                 {{ $row->effective_position ?? ($row->position ?? '-') }}
@@ -127,9 +129,11 @@
                             </td>
                             <td>{{ $row->studentEnrollment->roll_number ?? '-' }}</td>
                             <td>{{ $row->studentEnrollment->student->name ?? 'Student #' . $row->student_enrollment_id }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) ($splitTotals['exam_total'] ?? 0), 2, '.', ''), '0'), '.') }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) ($splitTotals['class_test_total'] ?? 0), 2, '.', ''), '0'), '.') }}</td>
                             <td>{{ rtrim(rtrim(number_format($homeworkMarks, 2, '.', ''), '0'), '.') }}</td>
                             <td>{{ rtrim(rtrim(number_format($attendanceMarks, 2, '.', ''), '0'), '.') }}</td>
-                            <td>{{ rtrim(rtrim(number_format($displayTotal, 2, '.', ''), '0'), '.') }}/{{ $row->total_marks }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) ($splitTotals['grand_total'] ?? 0), 2, '.', ''), '0'), '.') }}</td>
                             <td>{{ $row->percentage }}</td>
                             <td>{{ $row->gpa }}</td>
                             <td>{{ $row->final_grade }}</td>
@@ -149,7 +153,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="12" class="text-center">No results found. Publish results first.</td></tr>
+                        <tr><td colspan="14" class="text-center">No results found. Publish results first.</td></tr>
                     @endforelse
                 </tbody>
             </table>

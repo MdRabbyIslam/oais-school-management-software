@@ -61,6 +61,11 @@ class ExamResultController extends Controller
             $examAssessmentClass,
             $results->getCollection()->pluck('student_enrollment_id')->values()
         );
+        $splitTotalsByEnrollment = $this->buildSplitTotalsByEnrollment(
+            $examAssessmentClass,
+            $results->getCollection(),
+            $extraMarksByEnrollment
+        );
 
         $draftClassTestsCount = $this->draftClassTestsCountForAv($examAssessmentClass);
 
@@ -69,6 +74,7 @@ class ExamResultController extends Controller
             'assessmentClasses',
             'results',
             'extraMarksByEnrollment',
+            'splitTotalsByEnrollment',
             'draftClassTestsCount'
         ));
     }
@@ -186,7 +192,8 @@ class ExamResultController extends Controller
             'homework_marks' => 0.0,
             'attendance_marks' => 0.0,
         ];
-        $highestFinalMarksBySubject = $this->highestFinalMarksBySubject($examAssessmentClass);
+        $highestTermMarksBySubject = $this->highestTermMarksBySubject($examAssessmentClass);
+        $summaryTotals = $this->buildPrintSummaryTotals($subjectRows, $extraMarks);
         $printView = $this->isNurseryToClassTwo($examAssessmentClass)
             ? 'pages.exams_result_print'
             : 'pages.exams_result_print_secondary';
@@ -199,7 +206,8 @@ class ExamResultController extends Controller
             'result',
             'subjectRows',
             'extraMarks',
-            'highestFinalMarksBySubject'
+            'highestTermMarksBySubject',
+            'summaryTotals'
         ));
     }
 
@@ -223,8 +231,8 @@ class ExamResultController extends Controller
 
         $assessmentSubjects = $examAssessmentClass->assessmentSubjects()
             ->with(['subject', 'components', 'gradingPolicy.gradeScheme.items'])
-            ->orderBy('subject_id')
             ->get();
+        $assessmentSubjects = $this->sortAssessmentSubjectsForClass($examAssessmentClass, $assessmentSubjects);
 
         $enrollmentIds = $results->pluck('student_enrollment_id')->values();
         $marksByKey = ExamMark::query()
@@ -349,9 +357,14 @@ class ExamResultController extends Controller
                 'roll' => $result->studentEnrollment->roll_number ?? '-',
                 'student_name' => $result->studentEnrollment->student->name ?? ('Student #' . $result->student_enrollment_id),
                 'subject_data' => $subjectData,
+                'exam_total' => collect($subjectData)->sum(fn ($subject) => (float) ($subject['total'] ?? 0)),
+                'class_test_total' => collect($subjectData)->sum(fn ($subject) => (float) ($subject['average'] ?? 0)),
                 'homework_marks' => $homeworkMarks,
                 'attendance_marks' => $attendanceMarks,
-                'total' => (float) $result->total_obtained + $homeworkMarks + $attendanceMarks,
+                'grand_total' => collect($subjectData)->sum(fn ($subject) => (float) ($subject['total'] ?? 0))
+                    + collect($subjectData)->sum(fn ($subject) => (float) ($subject['average'] ?? 0))
+                    + $homeworkMarks
+                    + $attendanceMarks,
                 'gpa' => $hasFailedMandatorySubject ? 0.0 : (float) $result->gpa,
                 'position' => $result->effective_position ?? '-',
             ];
@@ -386,8 +399,8 @@ class ExamResultController extends Controller
 
         $assessmentSubjects = $examAssessmentClass->assessmentSubjects()
             ->with(['subject', 'components', 'gradingPolicy.gradeScheme.items'])
-            ->orderBy('subject_id')
             ->get();
+        $assessmentSubjects = $this->sortAssessmentSubjectsForClass($examAssessmentClass, $assessmentSubjects);
 
         $enrollmentIds = $results->pluck('student_enrollment_id')->values();
         $marksByKey = ExamMark::query()
@@ -429,7 +442,7 @@ class ExamResultController extends Controller
         $compulsorySubjectRows = [];
         $optionalSubjectRows = [];
         $calculationMode = $this->resultCalculationMode($assessmentClass);
-        foreach ($assessmentClass->assessmentSubjects as $assessmentSubject) {
+        foreach ($this->sortAssessmentSubjectsForClass($assessmentClass, $assessmentClass->assessmentSubjects) as $assessmentSubject) {
             if (!$this->isSubjectApplicableToEnrollment($assessmentSubject, $studentEnrollment, $calculationMode)) {
                 continue;
             }
@@ -494,6 +507,39 @@ class ExamResultController extends Controller
         }
 
         return array_merge($compulsorySubjectRows, $optionalSubjectRows);
+    }
+
+    private function sortAssessmentSubjectsForClass(ExamAssessmentClass $assessmentClass, $assessmentSubjects)
+    {
+        $sortOrderMap = $this->subjectSortOrderMapForClass($assessmentClass);
+
+        return $assessmentSubjects
+            ->sortBy(function ($assessmentSubject) use ($sortOrderMap) {
+                $subjectId = (int) $assessmentSubject->subject_id;
+                $subjectName = strtolower((string) ($assessmentSubject->subject->name ?? ''));
+
+                return sprintf(
+                    '%010d|%s|%010d',
+                    $sortOrderMap[$subjectId] ?? PHP_INT_MAX,
+                    $subjectName,
+                    $subjectId
+                );
+            })
+            ->values();
+    }
+
+    private function subjectSortOrderMapForClass(ExamAssessmentClass $assessmentClass): array
+    {
+        $schoolClass = $assessmentClass->schoolClass;
+
+        if (!$schoolClass) {
+            return [];
+        }
+
+        return $schoolClass->subjects()
+            ->pluck('class_subject.sort_order', 'subjects.id')
+            ->map(fn ($sortOrder) => (int) $sortOrder)
+            ->all();
     }
 
     private function resolveTermGradeAndGpa($assessmentSubject, ?float $termObtained): array
@@ -782,13 +828,83 @@ class ExamResultController extends Controller
                 'roll' => $result->studentEnrollment->roll_number ?? '-',
                 'student_name' => $result->studentEnrollment->student->name ?? ('Student #' . $result->student_enrollment_id),
                 'subject_data' => $subjectData,
+                'exam_total' => collect($subjectData)->sum(fn ($subject) => (float) ($subject['total'] ?? 0)),
+                'class_test_total' => collect($subjectData)->sum(fn ($subject) => (float) ($subject['average'] ?? 0)),
                 'homework_marks' => $homeworkMarks,
                 'attendance_marks' => $attendanceMarks,
-                'total' => (float) $result->total_obtained + $homeworkMarks + $attendanceMarks,
+                'grand_total' => collect($subjectData)->sum(fn ($subject) => (float) ($subject['total'] ?? 0))
+                    + collect($subjectData)->sum(fn ($subject) => (float) ($subject['average'] ?? 0))
+                    + $homeworkMarks
+                    + $attendanceMarks,
                 'gpa' => $hasFailedMandatorySubject ? 0.0 : (float) $result->gpa,
                 'position' => $result->effective_position ?? '-',
             ];
         })->values();
+    }
+
+    private function buildSplitTotalsByEnrollment(ExamAssessmentClass $assessmentClass, $results, array $extraMarksByEnrollment): array
+    {
+        $assessmentClass->loadMissing(['examAssessment', 'assessmentSubjects']);
+        $assessmentSubjects = $assessmentClass->assessmentSubjects;
+        if ($assessmentSubjects->isEmpty() || $results->isEmpty()) {
+            return [];
+        }
+
+        $enrollmentIds = $results->pluck('student_enrollment_id')->map(fn ($id) => (int) $id)->values();
+        $marksByKey = ExamMark::query()
+            ->whereIn('assessment_subject_id', $assessmentSubjects->pluck('id'))
+            ->whereIn('student_enrollment_id', $enrollmentIds)
+            ->get()
+            ->keyBy(fn ($mark) => ((int) $mark->assessment_subject_id) . ':' . ((int) $mark->student_enrollment_id));
+
+        $classTestAverageMap = $this->buildClassTestAverageMapForAssessmentClass(
+            $assessmentClass,
+            $assessmentSubjects,
+            $enrollmentIds
+        );
+
+        $calculationMode = $this->resultCalculationMode($assessmentClass);
+
+        return $results->mapWithKeys(function ($result) use (
+            $assessmentSubjects,
+            $marksByKey,
+            $classTestAverageMap,
+            $extraMarksByEnrollment,
+            $calculationMode
+        ) {
+            $examTotal = 0.0;
+            $classTestTotal = 0.0;
+
+            foreach ($assessmentSubjects as $assessmentSubject) {
+                if (!$this->isSubjectApplicableToEnrollment($assessmentSubject, $result->studentEnrollment, $calculationMode)) {
+                    continue;
+                }
+
+                $mark = $marksByKey->get(((int) $assessmentSubject->id) . ':' . ((int) $result->student_enrollment_id));
+                if ($mark && !$mark->is_absent && $mark->marks_obtained !== null) {
+                    $examTotal += (float) $mark->marks_obtained;
+                }
+
+                $classTestTotal += (float) ($classTestAverageMap[((int) $assessmentSubject->subject_id) . ':' . ((int) $result->student_enrollment_id)] ?? 0.0);
+            }
+
+            $extra = $extraMarksByEnrollment[(int) $result->student_enrollment_id] ?? [
+                'homework_marks' => 0.0,
+                'attendance_marks' => 0.0,
+            ];
+            $homeworkMarks = (float) ($extra['homework_marks'] ?? 0.0);
+            $attendanceMarks = (float) ($extra['attendance_marks'] ?? 0.0);
+
+            return [
+                (int) $result->student_enrollment_id => [
+                    'exam_total' => round($examTotal, 2),
+                    'class_test_total' => round($classTestTotal, 2),
+                    'homework_marks' => round($homeworkMarks, 2),
+                    'attendance_marks' => round($attendanceMarks, 2),
+                    'grand_total' => round($examTotal + $classTestTotal + $homeworkMarks + $attendanceMarks, 2),
+                ],
+            ];
+        })->all();
     }
 
     private function effectivePositionMap(int $assessmentClassId): array
@@ -988,7 +1104,33 @@ class ExamResultController extends Controller
         return null;
     }
 
-    private function highestFinalMarksBySubject(ExamAssessmentClass $assessmentClass): array
+    private function buildPrintSummaryTotals(array $subjectRows, array $extraMarks): array
+    {
+        $examTotal = collect($subjectRows)->sum(function ($subject) {
+            if ((bool) ($subject['is_absent'] ?? false)) {
+                return 0;
+            }
+
+            return (float) ($subject['term_obtained_marks'] ?? 0);
+        });
+
+        $classTestTotal = collect($subjectRows)->sum(function ($subject) {
+            return (float) ($subject['class_test_average'] ?? 0);
+        });
+
+        $homeworkMarks = (float) ($extraMarks['homework_marks'] ?? 0);
+        $attendanceMarks = (float) ($extraMarks['attendance_marks'] ?? 0);
+
+        return [
+            'exam_total' => round($examTotal, 2),
+            'class_test_total' => round($classTestTotal, 2),
+            'homework_marks' => round($homeworkMarks, 2),
+            'attendance_marks' => round($attendanceMarks, 2),
+            'grand_total' => round($examTotal + $classTestTotal + $homeworkMarks + $attendanceMarks, 2),
+        ];
+    }
+
+    private function highestTermMarksBySubject(ExamAssessmentClass $assessmentClass): array
     {
         $assessmentClass->loadMissing(['examAssessment', 'assessmentSubjects']);
         $assessmentSubjects = $assessmentClass->assessmentSubjects;
@@ -1027,10 +1169,8 @@ class ExamResultController extends Controller
             $highest = 0.0;
             foreach ($enrollmentIds as $enrollmentId) {
                 $term = (float) optional($marksByKey->get($assessmentSubject->id . ':' . $enrollmentId))->marks_obtained;
-                $average = (float) ($classTestAverageMap[((int) $assessmentSubject->subject_id) . ':' . ((int) $enrollmentId)] ?? 0.0);
-                $final = min((float) $assessmentSubject->total_marks, $term + $average);
-                if ($final > $highest) {
-                    $highest = $final;
+                if ($term > $highest) {
+                    $highest = $term;
                 }
             }
 
