@@ -340,7 +340,7 @@ class ExamResultController extends Controller
                     'average' => $average,
                     'gpa' => $subjectPass ? $this->resolveSubjectGpaForClassPdf(
                         $layout['assessment_subject_id'],
-                        $finalObtained,
+                        (float) ($termObtained ?? 0),
                         $gradeItemsByAssessmentSubject
                     ) : 0.0,
                 ];
@@ -812,7 +812,7 @@ class ExamResultController extends Controller
                     'average' => $average,
                     'gpa' => $subjectPass ? $this->resolveSubjectGpaForClassPdf(
                         $layout['assessment_subject_id'],
-                        $finalObtained,
+                        (float) ($termObtained ?? 0),
                         $gradeItemsByAssessmentSubject
                     ) : 0.0,
                 ];
@@ -1180,3 +1180,4 @@ class ExamResultController extends Controller
         return $highestBySubject;
     }
 }
+

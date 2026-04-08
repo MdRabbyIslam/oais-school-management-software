@@ -7,6 +7,7 @@ use App\Models\ExamAssessmentClass;
 use App\Models\ExamMark;
 use App\Models\ExamStudentResult;
 use App\Models\StudentEnrollment;
+use App\Models\StudentTermExtraMark;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -48,14 +49,16 @@ class ExamResultService
                 ->keyBy(fn ($mark) => $mark->assessment_subject_id . ':' . $mark->student_enrollment_id);
 
             $classTestAverageMap = $this->buildClassTestAverageMap($assessmentClass, $subjects, $enrollments);
+            $extraMarksByEnrollment = $this->extraMarksByEnrollment($assessmentClass, $enrollments);
             $calculationMode = (string) ($assessmentClass->examAssessment->result_calculation_mode ?? 'standard_weighted');
 
             $processed = 0;
             $skipped = 0;
 
             foreach ($enrollments as $enrollment) {
-                $weightedObtained = 0.0;
-                $weightedTotal = 0.0;
+                $totalObtained = 0.0;
+                $totalMarks = 0.0;
+                $percentageObtained = 0.0;
                 $weightedGpaPoints = 0.0;
                 $weightedGpaBase = 0.0;
                 $failedMandatory = 0;
@@ -68,7 +71,7 @@ class ExamResultService
                     }
 
                     $weight = (float) $subjectSetup->weight;
-                    $totalMarks = (float) $subjectSetup->total_marks;
+                    $subjectTotalMarks = (float) $subjectSetup->total_marks;
                     $passMarks = (float) $subjectSetup->pass_marks;
 
                     $markKey = $subjectSetup->id . ':' . $enrollment->id;
@@ -80,18 +83,18 @@ class ExamResultService
                     }
 
                     $classTestAverage = (float) ($classTestAverageMap[$subjectSetup->subject_id . ':' . $enrollment->id] ?? 0.0);
-                    $obtained = min($totalMarks, $examObtained + $classTestAverage);
+                    $obtained = $examObtained + $classTestAverage;
 
                     $gradeRow = $this->resolveGrade(
-                        $obtained,
+                        $examObtained,
                         $subjectSetup->gradingPolicy?->gradeScheme?->items ?? collect()
                     );
                     $subjectGpa = (float) ($gradeRow['gpa'] ?? 0);
                     $subjectPassed = $this->isSubjectPass($subjectSetup, $mark, $obtained, $passMarks);
 
-                    $weightedObtained += $obtained * $weight;
-                    $weightedTotal += $totalMarks * $weight;
-
+                    $totalObtained += $obtained;
+                    $percentageObtained += $examObtained;
+                    $totalMarks += $subjectTotalMarks;
                     if ($role['counts_in_gpa']) {
                         if ($calculationMode === 'ssc_optional_subject') {
                             $weightedGpaPoints += $subjectGpa;
@@ -111,12 +114,12 @@ class ExamResultService
                     }
                 }
 
-                if ($weightedTotal <= 0) {
+                if ($totalMarks <= 0) {
                     $skipped++;
                     continue;
                 }
 
-                $percentage = ($weightedObtained / $weightedTotal) * 100;
+                $percentage = ($percentageObtained / $totalMarks) * 100;
                 $isPass = $failedMandatory === 0;
                 $gpa = 0.0;
                 if ($isPass && $weightedGpaBase > 0) {
@@ -133,8 +136,8 @@ class ExamResultService
                         'student_enrollment_id' => $enrollment->id,
                     ],
                     [
-                        'total_obtained' => round($weightedObtained, 2),
-                        'total_marks' => round($weightedTotal, 2),
+                        'total_obtained' => round($totalObtained, 2),
+                        'total_marks' => round($totalMarks, 2),
                         'percentage' => round($percentage, 2),
                         'gpa' => round($gpa, 2),
                         'final_grade' => $finalGrade,
@@ -147,7 +150,7 @@ class ExamResultService
                 $processed++;
             }
 
-            $this->applyPosition($assessmentClass->id);
+            $this->applyPosition($assessmentClass, $extraMarksByEnrollment);
 
             return [
                 'processed' => $processed,
@@ -206,11 +209,17 @@ class ExamResultService
 
     private function resolveGrade(float $obtained, $schemeItems): array
     {
-        $matched = $schemeItems
+        $sortedItems = $schemeItems
             ->sortBy('sort_order')
-            ->first(function ($item) use ($obtained) {
-                return $obtained >= (float) $item->min_mark && $obtained <= (float) $item->max_mark;
-            });
+            ->values();
+
+        $matched = $sortedItems->first(function ($item) use ($obtained) {
+            return $obtained >= (float) $item->min_mark && $obtained <= (float) $item->max_mark;
+        });
+
+        if (!$matched && $sortedItems->isNotEmpty() && $obtained > (float) ($sortedItems->last()->max_mark ?? 0)) {
+            $matched = $sortedItems->last();
+        }
 
         if (!$matched) {
             return ['letter' => 'F', 'gpa' => 0.0];
@@ -243,16 +252,54 @@ class ExamResultService
         return 'F';
     }
 
-    private function applyPosition(int $assessmentClassId): void
+    private function applyPosition(ExamAssessmentClass $assessmentClass, array $extraMarksByEnrollment): void
     {
         $results = ExamStudentResult::query()
             ->select('exam_student_results.*')
-            ->join('student_enrollments', 'student_enrollments.id', '=', 'exam_student_results.student_enrollment_id')
-            ->where('assessment_class_id', $assessmentClassId)
-            ->orderByDesc('gpa')
-            ->orderByDesc('total_obtained')
-            ->orderByRaw('ISNULL(student_enrollments.roll_number), student_enrollments.roll_number ASC')
-            ->get();
+            ->with('studentEnrollment')
+            ->where('assessment_class_id', $assessmentClass->id)
+            ->get()
+            ->sort(function (ExamStudentResult $left, ExamStudentResult $right) use ($extraMarksByEnrollment) {
+                $leftExtra = $extraMarksByEnrollment[(int) $left->student_enrollment_id] ?? [
+                    'homework_marks' => 0.0,
+                    'attendance_marks' => 0.0,
+                ];
+                $rightExtra = $extraMarksByEnrollment[(int) $right->student_enrollment_id] ?? [
+                    'homework_marks' => 0.0,
+                    'attendance_marks' => 0.0,
+                ];
+
+                $leftGrandTotal = (float) $left->total_obtained
+                    + (float) ($leftExtra['homework_marks'] ?? 0.0)
+                    + (float) ($leftExtra['attendance_marks'] ?? 0.0);
+                $rightGrandTotal = (float) $right->total_obtained
+                    + (float) ($rightExtra['homework_marks'] ?? 0.0)
+                    + (float) ($rightExtra['attendance_marks'] ?? 0.0);
+
+                if ($leftGrandTotal !== $rightGrandTotal) {
+                    return $rightGrandTotal <=> $leftGrandTotal;
+                }
+
+                if ((float) $left->gpa !== (float) $right->gpa) {
+                    return (float) $right->gpa <=> (float) $left->gpa;
+                }
+
+                if ((float) $left->total_obtained !== (float) $right->total_obtained) {
+                    return (float) $right->total_obtained <=> (float) $left->total_obtained;
+                }
+
+                $leftRoll = $left->studentEnrollment?->roll_number;
+                $rightRoll = $right->studentEnrollment?->roll_number;
+                if ($leftRoll === null && $rightRoll !== null) {
+                    return 1;
+                }
+                if ($leftRoll !== null && $rightRoll === null) {
+                    return -1;
+                }
+
+                return ((int) ($leftRoll ?? 0)) <=> ((int) ($rightRoll ?? 0));
+            })
+            ->values();
 
         $position = 0;
         foreach ($results as $result) {
@@ -333,4 +380,29 @@ class ExamResultService
             'counts_as_optional_bonus' => false,
         ];
     }
+
+    private function extraMarksByEnrollment(ExamAssessmentClass $assessmentClass, $enrollments): array
+    {
+        $enrollmentIds = $enrollments->pluck('id')->map(fn ($id) => (int) $id)->values();
+        if ($enrollmentIds->isEmpty()) {
+            return [];
+        }
+
+        return StudentTermExtraMark::query()
+            ->where('academic_year_id', $assessmentClass->examAssessment->academic_year_id)
+            ->where('class_id', $assessmentClass->class_id)
+            ->where('term_id', $assessmentClass->examAssessment->term_id)
+            ->whereIn('student_enrollment_id', $enrollmentIds)
+            ->get()
+            ->mapWithKeys(function (StudentTermExtraMark $item) {
+                return [
+                    (int) $item->student_enrollment_id => [
+                        'homework_marks' => (float) ($item->homework_marks ?? 0),
+                        'attendance_marks' => (float) ($item->attendance_marks ?? 0),
+                    ],
+                ];
+            })
+            ->all();
+    }
 }
+
