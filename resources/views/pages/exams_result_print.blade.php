@@ -213,6 +213,7 @@
             color: #333;
             padding-bottom: 4px;
             text-transform: uppercase;
+            font-weight: 600;
         }
         .grade-box th, .grade-box td {
             border: .5px solid #aaaaaa;
@@ -224,8 +225,16 @@
             background: #1c1c1c;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            background: #aaaaaa;
+            color: #000;
         }
-        .grade-box thead th { color: #ffffff; font-family: 'Cinzel', serif; font-size: calc(10px * var(--font-scale)); letter-spacing: .5px; }
+        .grade-box thead th {
+            color: #ffffff;
+            font-family: 'Cinzel', serif;
+            font-size: calc(10px * var(--font-scale));
+            letter-spacing: .5px;
+            color: #000;
+        }
         .grade-box tbody tr:nth-child(odd) { background: #f4f4f4; }
 
         /* ─── Info / meta table ─── */
@@ -235,13 +244,14 @@
             padding: 5px 7px;
             font-size: calc(12.5px * var(--font-scale));
         }
-        .meta td:first-child { border-left: 3px solid #1c1c1c; }
+        .meta td:first-child {
+             border-left: 3px solid #1c1c1c;
+              border-left: 3px solid #aaaaaa; 
+        }
         .meta strong { color: #1c1c1c; font-family: 'Cinzel', serif; font-size: calc(10.5px * var(--font-scale)); display: block; margin-bottom: 1px; letter-spacing: .3px; }
 
         /* ─── Section header strip ─── */
         .sec-header {
-            background: #1c1c1c;
-            color: #ffffff;
             font-family: 'Cinzel', serif;
             font-size: calc(9px * var(--font-scale));
             letter-spacing: 3px;
@@ -253,6 +263,9 @@
             border-right: 3px solid #555;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            background: #aaaaaa;
+            color: #000;
+            font-weight: 700;
         }
 
         /* ─── Marks table ─── */
@@ -261,11 +274,16 @@
             border-collapse: collapse;
             margin-bottom: 8px;
         }
+        .marks{
+            border-top: 2px solid #fff;
+        }
         .marks thead tr th {
             background: #1c1c1c;
             color: #ffffff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            background: #aaaaaa;
+            color: #000;
         }
         .marks th, .marks td,
         .summary-table th, .summary-table td,
@@ -293,6 +311,8 @@
             letter-spacing: .5px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            background: #aaaaaa;
+            color: #000;
         }
         .summary-table tbody td { font-weight: 600; font-size: calc(13px * var(--font-scale)); }
 
@@ -340,6 +360,7 @@
             width: 100%;
             border: .5px solid #aaaaaa;
             border-left: 3px solid #1c1c1c;
+            border-left: 3px solid #aaaaaa;
             min-height: 90px;
             margin-bottom: 8px;
             padding: 6px 10px;
